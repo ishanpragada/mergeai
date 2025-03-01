@@ -1,29 +1,54 @@
 {
-  "name": "mergeai",
-  "displayName": "MergeAI",
-  "version": "0.0.4",
-  "description": "3-Panel Merge with working line updates",
+  "name": "merge-conflict-resolution",
+  "displayName": "Merge Conflict Resolution",
+  "description": "Improved merge conflict resolution UI for VS Code",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.70.0"
   },
-  "activationEvents": [
-    "onCommand:mergeai.openCustomMergeView"
+  "categories": [
+    "Other"
   ],
-  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:mergeConflictResolution.showMergeUI"
+  ],
+  "main": "./extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mergeai.openCustomMergeView",
-        "title": "Open Custom 3-Panel Merge View"
+        "command": "mergeConflictResolution.showMergeUI",
+        "title": "Show Improved Merge Resolution UI"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasDocumentFormattingProvider",
+          "command": "mergeConflictResolution.showMergeUI",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mergeConflictResolution.showMergeUI",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus"
       }
     ]
   },
   "scripts": {
-    "compile": "tsc -p .",
-    "watch": "tsc -watch -p ."
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.70.0",
-    "typescript": "^5.0.0"
+    "@types/glob": "^7.2.0",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "16.x",
+    "eslint": "^8.0.0",
+    "mocha": "^10.0.0"
   }
 }
