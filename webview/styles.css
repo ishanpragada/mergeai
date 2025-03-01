@@ -1,0 +1,178 @@
+:root {
+    --vscode-editor-background: #ffffff;
+    --vscode-editor-foreground: #000000;
+    --vscode-line-number-color: #858585;
+    --vscode-local-conflict: rgba(0, 255, 0, 0.1);
+    --vscode-remote-conflict: rgba(255, 0, 0, 0.1);
+    --vscode-local-border: #00ff00;
+    --vscode-remote-border: #ff0000;
+    --vscode-button-background: #007acc;
+    --vscode-button-hover: #005999;
+}
+
+body {
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    margin: 0;
+    padding: 20px;
+}
+
+.editor-container {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    height: 70vh;
+}
+
+.editor-panel {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: none;
+    white-space: pre;
+    overflow: auto;
+    font-size: 14px;
+    line-height: 1.4;
+    background-color: var(--vscode-editor-background);
+}
+
+.line-container {
+    display: flex;
+    align-items: stretch;
+}
+
+.line-number {
+    user-select: none;
+    text-align: right;
+    padding: 0 8px;
+    min-width: 40px;
+    color: var(--vscode-line-number-color);
+    background-color: var(--vscode-editor-background);
+    border-right: 1px solid #ccc;
+}
+
+.conflict-line {
+    display: block;
+    padding: 2px 4px;
+    margin: 2px 0;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.local-conflict {
+    background-color: var(--vscode-local-conflict);
+    border-left: 3px solid var(--vscode-local-border);
+}
+
+.remote-conflict {
+    background-color: var(--vscode-remote-conflict);
+    border-left: 3px solid var(--vscode-remote-border);
+}
+
+.current-conflict {
+    outline: 2px solid #007acc;
+    z-index: 1;
+}
+
+.accepted {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-color: rgba(150, 150, 150, 0.1);
+}
+
+.rejected {
+    opacity: 0.3;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.panel-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    text-align: center;
+    color: var(--vscode-editor-foreground);
+}
+
+.arrow-buttons {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.arrow-button {
+    background: none;
+    border: none;
+    color: var(--vscode-editor-foreground);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 16px;
+    border-radius: 3px;
+}
+
+.arrow-button:hover {
+    background-color: #2a2d2e;
+}
+
+.arrow-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+    justify-content: center;
+}
+
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--vscode-button-background);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: var(--vscode-button-hover);
+}
+
+button:active {
+    background-color: #004c80;
+}
+
+.hint {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+kbd {
+    display: inline-block;
+    padding: 3px 5px;
+    font: 11px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    line-height: 10px;
+    color: #444d56;
+    vertical-align: middle;
+    background-color: #fafbfc;
+    border: solid 1px #d1d5da;
+    border-bottom-color: #c6cbd1;
+    border-radius: 3px;
+    box-shadow: inset 0 -1px 0 #c6cbd1;
+    margin: 0 2px;
+}

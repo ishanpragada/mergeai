@@ -1,7 +1,7 @@
 {
-  "name": "merge-conflict-resolution",
-  "displayName": "Merge Conflict Resolution",
-  "description": "Improved merge conflict resolution UI for VS Code",
+  "name": "mergeai",
+  "displayName": "MergeAI",
+  "description": "Interactive merge conflict resolution for VS Code",
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.70.0"
@@ -10,28 +10,29 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:mergeConflictResolution.showMergeUI"
+    "onCommand:mergeai.resolveMergeConflict",
+    "onStartupFinished"
   ],
-  "main": "./extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mergeConflictResolution.showMergeUI",
-        "title": "Show Improved Merge Resolution UI"
+        "command": "mergeai.resolveMergeConflict",
+        "title": "Resolve Merge Conflict"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "when": "editorHasDocumentFormattingProvider",
-          "command": "mergeConflictResolution.showMergeUI",
+          "when": "editorTextFocus",
+          "command": "mergeai.resolveMergeConflict",
           "group": "1_modification"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "mergeConflictResolution.showMergeUI",
+        "command": "mergeai.resolveMergeConflict",
         "key": "ctrl+alt+m",
         "mac": "cmd+alt+m",
         "when": "editorTextFocus"
@@ -39,9 +40,11 @@
     ]
   },
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "node ./test/runTest.js"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.70.0",
@@ -49,6 +52,8 @@
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
     "eslint": "^8.0.0",
-    "mocha": "^10.0.0"
+    "typescript": "^4.5.5",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0"
   }
 }
