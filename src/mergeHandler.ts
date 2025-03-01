@@ -115,6 +115,7 @@ export class MergeConflictHandler {
                         display: flex;
                         flex-direction: column;
                         overflow: hidden; /* Hide overflow here; child will scroll */
+                        position: relative; /* For positioning action buttons */
                     }
 
                     .panel-header {
@@ -180,6 +181,54 @@ export class MergeConflictHandler {
                     }
                     .conflict-resolved::before {
                         background-color: rgba(246, 248, 250, 0.5);
+                    }
+
+                    /* Conflict section container */
+                    .conflict-section {
+                        position: relative;
+                        margin-bottom: 10px;
+                        padding-top: 30px; /* Add space for the buttons at the top */
+                    }
+
+                    /* Action buttons for each conflict section */
+                    .action-buttons {
+                        position: absolute;
+                        right: 10px;
+                        top: 0;
+                        display: flex;
+                        gap: 5px;
+                        z-index: 10; /* Ensure buttons are above code */
+                        background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+                        padding: 3px;
+                        border-radius: 3px;
+                    }
+
+                    .action-button {
+                        background: #f6f8fa;
+                        border: 1px solid #d1d5da;
+                        border-radius: 3px;
+                        padding: 2px 6px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                        z-index: 10; /* Ensure buttons are above code */
+                        position: relative; /* Establish stacking context */
+                    }
+
+                    .accept-button {
+                        background: #2ea043;
+                        color: white;
+                        border-color: #2ea043;
+                    }
+
+                    .reject-button {
+                        background: #f85149;
+                        color: white;
+                        border-color: #f85149;
+                    }
+
+                    .action-button:hover {
+                        opacity: 0.9;
                     }
 
                     /* Arrow buttons for local/remote acceptance */
@@ -295,31 +344,63 @@ export class MergeConflictHandler {
                                 });
                             }
 
+                            // Create conflict section containers
+                            const localSection = document.createElement('div');
+                            localSection.className = 'conflict-section';
+                            localSection.dataset.conflictIndex = index.toString();
+                            
+                            const remoteSection = document.createElement('div');
+                            remoteSection.className = 'conflict-section';
+                            remoteSection.dataset.conflictIndex = index.toString();
+                            
+                            const resolvedSection = document.createElement('div');
+                            resolvedSection.className = 'conflict-section';
+                            resolvedSection.dataset.conflictIndex = index.toString();
+                            resolvedSection.id = \`resolved-section-\${index}\`;
+
                             // Add conflict code
                             const localLines = conflict.local.split('\\n');
                             const remoteLines = conflict.remote.split('\\n');
                             const maxLines = Math.max(localLines.length, remoteLines.length);
 
-                            // Create arrow buttons for this conflict
-                            const arrowButtons = document.createElement('div');
-                            arrowButtons.className = 'arrow-buttons';
-                            arrowButtons.style.left = '50%';
-                            arrowButtons.style.top = resolvedContent.offsetTop + 'px';
-                            arrowButtons.innerHTML = \`
-                                <button class="arrow-button" onclick="acceptChange(\${index}, 'local')">←</button>
-                                <button class="arrow-button" onclick="acceptChange(\${index}, 'remote')">→</button>
-                            \`;
-                            resolvedContent.appendChild(arrowButtons);
-
-                            // Add the conflict lines
+                            // Add the conflict lines to their respective sections
                             for (let i = 0; i < maxLines; i++) {
                                 const localLine = localLines[i] || '';
                                 const remoteLine = remoteLines[i] || '';
                                 
-                                localContent.appendChild(createCodeElement(localLine, true, 'local'));
-                                remoteContent.appendChild(createCodeElement(remoteLine, true, 'remote'));
-                                resolvedContent.appendChild(createCodeElement('', true, 'resolved'));
+                                localSection.appendChild(createCodeElement(localLine, true, 'local'));
+                                remoteSection.appendChild(createCodeElement(remoteLine, true, 'remote'));
+                                resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
                             }
+
+                            // Add action buttons to local section
+                            const localButtons = document.createElement('div');
+                            localButtons.className = 'action-buttons';
+                            localButtons.innerHTML = \`
+                                <button class="action-button accept-button" onclick="window.acceptChange(\${index}, 'local')">Accept</button>
+                            \`;
+                            localSection.appendChild(localButtons);
+
+                            // Add action buttons to remote section
+                            const remoteButtons = document.createElement('div');
+                            remoteButtons.className = 'action-buttons';
+                            remoteButtons.innerHTML = \`
+                                <button class="action-button accept-button" onclick="window.acceptChange(\${index}, 'remote')">Accept</button>
+                            \`;
+                            remoteSection.appendChild(remoteButtons);
+
+                            // Add action buttons to resolved section
+                            const resolvedButtons = document.createElement('div');
+                            resolvedButtons.className = 'action-buttons';
+                            resolvedButtons.innerHTML = \`
+                                <button class="action-button reject-button" onclick="window.clearResolvedSection(\${index})">Clear</button>
+                            \`;
+                            resolvedSection.appendChild(resolvedButtons);
+
+                            // Append sections to their respective panels
+                            localContent.appendChild(localSection);
+                            remoteContent.appendChild(remoteSection);
+                            resolvedContent.appendChild(resolvedSection);
 
                             lastPos = conflict.end;
                         });
@@ -340,14 +421,49 @@ export class MergeConflictHandler {
                         const conflict = conflicts[index];
                         const lines = source === 'local' ? conflict.local.split('\\n') : conflict.remote.split('\\n');
                         
-                        const resolvedContent = document.getElementById('resolved-content');
-                        const resolvedLines = resolvedContent.querySelectorAll('.conflict-resolved');
+                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                        if (!resolvedSection) return;
                         
-                        lines.forEach((line, i) => {
-                            if (resolvedLines[i]) {
-                                resolvedLines[i].textContent = line;
-                            }
+                        // Clear previous content
+                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                        Array.from(resolvedLines).forEach(line => line.remove());
+                        
+                        // Add new content
+                        lines.forEach(line => {
+                            resolvedSection.appendChild(createCodeElement(line, true, 'resolved'));
                         });
+                        
+                        // Add the clear button back
+                        const buttons = resolvedSection.querySelector('.action-buttons');
+                        if (buttons) {
+                            resolvedSection.appendChild(buttons);
+                        }
+                    }
+
+                    function clearResolvedSection(index) {
+                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                        if (!resolvedSection) return;
+                        
+                        // Clear content except for buttons
+                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                        Array.from(resolvedLines).forEach(line => line.remove());
+                        
+                        // Add empty lines
+                        const conflict = conflicts[index];
+                        const maxLines = Math.max(
+                            conflict.local.split('\\n').length,
+                            conflict.remote.split('\\n').length
+                        );
+                        
+                        for (let i = 0; i < maxLines; i++) {
+                            resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
+                        }
+                        
+                        // Add the clear button back
+                        const buttons = resolvedSection.querySelector('.action-buttons');
+                        if (buttons) {
+                            resolvedSection.appendChild(buttons);
+                        }
                     }
 
                     window.addEventListener('message', event => {
@@ -376,15 +492,52 @@ export class MergeConflictHandler {
                     });
 
                     document.getElementById('commit').addEventListener('click', () => {
+                        // Check if all conflicts have been resolved
+                        const unresolvedSections = Array.from(document.querySelectorAll('.conflict-section'))
+                            .filter(section => {
+                                const index = section.dataset.conflictIndex;
+                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                if (!resolvedSection) return false;
+                                
+                                const lines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                return Array.from(lines).every(line => line.textContent === '');
+                            });
+                            
+                        if (unresolvedSections.length > 0) {
+                            vscode.postMessage({ 
+                                command: 'showError', 
+                                message: 'Please resolve all conflicts before committing.'
+                            });
+                            return;
+                        }
+                        
+                        // Collect all content including resolved conflicts
                         const resolvedContent = document.getElementById('resolved-content');
-                        const lines = Array.from(resolvedContent.querySelectorAll('.code-line'))
-                            .map(line => line.textContent);
+                        const allLines = [];
+                        
+                        // Process non-conflict lines and resolved conflict sections
+                        Array.from(resolvedContent.childNodes).forEach(node => {
+                            if (node.classList && node.classList.contains('conflict-section')) {
+                                // Get resolved lines from conflict section
+                                const lines = node.querySelectorAll('.conflict-resolved');
+                                Array.from(lines).forEach(line => {
+                                    allLines.push(line.textContent);
+                                });
+                            } else if (node.classList && node.classList.contains('code-line')) {
+                                // Regular non-conflict line
+                                allLines.push(node.textContent);
+                            }
+                        });
                         
                         vscode.postMessage({ 
                             command: 'commitResolution', 
-                            resolvedCode: lines.join('\\n')
+                            resolvedCode: allLines.join('\\n')
                         });
                     });
+
+                    // Make functions available to the window object so they can be called from HTML
+                    window.acceptChange = acceptChange;
+                    window.clearResolvedSection = clearResolvedSection;
                 </script>
             </body>
             </html>
