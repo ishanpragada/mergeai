@@ -1,53 +1,29 @@
 {
   "name": "mergeai",
   "displayName": "MergeAI",
-  "version": "0.0.2",
-  "description": "A VS Code extension that provides a 3-panel merge conflict resolution UI.",
+  "version": "0.0.4",
+  "description": "3-Panel Merge with working line updates",
   "engines": {
     "vscode": "^1.70.0"
   },
   "activationEvents": [
-    "onCommand:mergeai.resolveConflictWithUI",
-    "onCommand:mergeai.ignoreOriginal",
-    "onCommand:mergeai.acceptOriginal",
-    "onCommand:mergeai.ignoreIncoming",
-    "onCommand:mergeai.acceptIncoming"
+    "onCommand:mergeai.openCustomMergeView"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mergeai.resolveConflictWith3PanelUI",
-        "title": "Resolve Conflict with 3-Panel UI"
-      },
-      {
-        "command": "mergeai.ignoreOriginal",
-        "title": "Ignore Original Change"
-      },
-      {
-        "command": "mergeai.acceptOriginal",
-        "title": "Accept Original Change"
-      },
-      {
-        "command": "mergeai.ignoreIncoming",
-        "title": "Ignore Incoming Change"
-      },
-      {
-        "command": "mergeai.acceptIncoming",
-        "title": "Accept Incoming Change"
+        "command": "mergeai.openCustomMergeView",
+        "title": "Open Custom 3-Panel Merge View"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p ."
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.10",
-    "@types/node": "^22.13.7",
     "@types/vscode": "^1.70.0",
-    "mocha": "^11.1.0",
     "typescript": "^5.0.0"
   }
 }

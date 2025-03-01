@@ -1,7 +1,10 @@
 <<<<<<< HEAD
-const greeting = "Hello from HEAD!";
+line1: current
+line2: current
 ||||||| original
-const greeting = "Hi from the original base!";
+line1: original
+line2: original
 =======
-const greeting = "Hello from the incoming branch!";
->>>>>>> some-branch
+line1: incoming
+line2: incoming
+>>>>>>> branch
