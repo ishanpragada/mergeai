@@ -1,41 +1,53 @@
 {
   "name": "mergeai",
   "displayName": "MergeAI",
-  "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "description": "A VS Code extension that provides a 3-panel merge conflict resolution UI.",
   "engines": {
-    "vscode": "^1.97.0"
+    "vscode": "^1.70.0"
   },
-  "categories": [
-    "Other"
+  "activationEvents": [
+    "onCommand:mergeai.resolveConflictWithUI",
+    "onCommand:mergeai.ignoreOriginal",
+    "onCommand:mergeai.acceptOriginal",
+    "onCommand:mergeai.ignoreIncoming",
+    "onCommand:mergeai.acceptIncoming"
   ],
-  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mergeai.helloWorld",
-        "title": "Hello World"
+        "command": "mergeai.resolveConflictWith3PanelUI",
+        "title": "Resolve Conflict with 3-Panel UI"
+      },
+      {
+        "command": "mergeai.ignoreOriginal",
+        "title": "Ignore Original Change"
+      },
+      {
+        "command": "mergeai.acceptOriginal",
+        "title": "Accept Original Change"
+      },
+      {
+        "command": "mergeai.ignoreIncoming",
+        "title": "Ignore Incoming Change"
+      },
+      {
+        "command": "mergeai.acceptIncoming",
+        "title": "Accept Incoming Change"
       }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.97.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
-    "@typescript-eslint/eslint-plugin": "^8.22.0",
-    "@typescript-eslint/parser": "^8.22.0",
-    "eslint": "^9.19.0",
-    "typescript": "^5.7.3",
-    "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@types/node": "^22.13.7",
+    "@types/vscode": "^1.70.0",
+    "mocha": "^11.1.0",
+    "typescript": "^5.0.0"
   }
 }

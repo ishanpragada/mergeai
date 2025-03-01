@@ -1,0 +1,7 @@
+<<<<<<< HEAD
+const greeting = "Hello from HEAD!";
+||||||| original
+const greeting = "Hi from the original base!";
+=======
+const greeting = "Hello from the incoming branch!";
+>>>>>>> some-branch
