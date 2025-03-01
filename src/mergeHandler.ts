@@ -83,6 +83,7 @@ export class MergeConflictHandler {
                         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
                         background-color: var(--vscode-editor-background, #1e1e1e);
                         color: var(--vscode-editor-foreground, #d4d4d4);
+                        overflow: hidden; /* Prevent default body scrolling */
                     }
 
                     body {
@@ -107,6 +108,24 @@ export class MergeConflictHandler {
                         padding: 10px;
                         box-sizing: border-box;
                         position: relative; /* For positioning the between-panel buttons */
+                        overflow: hidden; /* Hide overflow */
+                    }
+                    
+                    /* Main scrollable container with vertical scrollbar */
+                    .scroll-container {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        overflow-y: scroll;
+                        overflow-x: hidden;
+                    }
+                    
+                    /* Content wrapper that will be as tall as the tallest panel */
+                    .scroll-content {
+                        width: 100%;
+                        height: 0; /* Will be set dynamically */
                     }
 
                     .panel {
@@ -135,9 +154,9 @@ export class MergeConflictHandler {
                         /* This is the scrollable area inside each panel */
                         flex: 1;
                         padding: 0;
-
-                        /* Enable vertical and horizontal scrolling inside the panel */
-                        overflow-y: auto;
+                        
+                        /* Only allow horizontal scrolling */
+                        overflow-y: hidden;
                         overflow-x: auto;
 
                         /* Do not wrap long lines; let them scroll horizontally */
@@ -149,10 +168,6 @@ export class MergeConflictHandler {
                         font-size: 12px;
                         line-height: 1.5;
                         tab-size: 4;
-                        
-                        /* Hide scrollbars while maintaining scroll functionality */
-                        scrollbar-width: none; /* Firefox */
-                        -ms-overflow-style: none; /* IE and Edge */
                     }
                     
                     /* Hide scrollbar for Chrome, Safari and Opera */
@@ -223,11 +238,6 @@ export class MergeConflictHandler {
                         margin-bottom: 0;
                         padding: 0;
                         border: none;
-                    }
-
-                    /* Active conflict section */
-                    .conflict-section.active {
-                        background-color: var(--vscode-editor-selectionBackground, rgba(3, 102, 214, 0.05));
                     }
 
                     /* Use pseudo-elements to create full-width backgrounds */
@@ -388,74 +398,28 @@ export class MergeConflictHandler {
                     .commit-button:hover {
                         background: var(--vscode-button-hoverBackground, #2c974b);
                     }
-
-                    .keyboard-hint {
-                        text-align: center;
-                        color: var(--vscode-descriptionForeground, #586069);
-                        margin-top: 10px;
-                        font-size: 12px;
-                    }
-                    kbd {
-                        background: var(--vscode-keybindingLabel-background, #fafbfc);
-                        border: 1px solid var(--vscode-keybindingLabel-border, #d1d5da);
-                        border-radius: 3px;
-                        padding: 2px 5px;
-                        font-size: 11px;
-                    }
-
-                    /* Add CSS to ensure consistent panel heights */
-                    .panel-content {
-                        height: 100%;
-                        overflow-x: auto;
-                        overflow-y: hidden; /* Hide vertical scrollbars on all panels */
-                        scrollbar-width: none; /* Firefox */
-                        -ms-overflow-style: none; /* IE and Edge */
-                    }
-                    
-                    /* Hide scrollbar for Chrome, Safari and Opera */
-                    .panel-content::-webkit-scrollbar {
-                        display: none;
-                    }
-                    
-                    /* Create a master scrollbar container */
-                    .master-scroll-container {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        overflow-y: auto;
-                        overflow-x: hidden;
-                        pointer-events: none; /* Allow clicking through to content */
-                        z-index: 1000;
-                    }
-                    
-                    /* Content for the master scrollbar */
-                    .master-scroll-content {
-                        height: 0; /* Will be set dynamically */
-                        width: 1px;
-                    }
                 </style>
             </head>
             <body>
-                <div class="panels-container">
-                    <div class="panel">
-                        <div class="panel-header">Local Changes</div>
-                        <div id="local-content" class="panel-content"></div>
-                    </div>
-                    <div class="panel">
-                        <div class="panel-header">Resolved Code</div>
-                        <div id="resolved-content" class="panel-content"></div>
-                    </div>
-                    <div class="panel">
-                        <div class="panel-header">Remote Changes</div>
-                        <div id="remote-content" class="panel-content"></div>
+                <div class="scroll-container" id="main-scroll">
+                    <div class="scroll-content" id="scroll-content">
+                        <div class="panels-container">
+                            <div class="panel">
+                                <div class="panel-header">Local Changes</div>
+                                <div id="local-content" class="panel-content"></div>
+                            </div>
+                            <div class="panel">
+                                <div class="panel-header">Resolved Code</div>
+                                <div id="resolved-content" class="panel-content"></div>
+                            </div>
+                            <div class="panel">
+                                <div class="panel-header">Remote Changes</div>
+                                <div id="remote-content" class="panel-content"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button id="commit" class="commit-button">Commit Resolution</button>
-                <div class="keyboard-hint">
-                    Press <kbd>←</kbd> to accept local changes • <kbd>→</kbd> to accept remote changes
-                </div>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-typescript.min.js"></script>
@@ -663,22 +627,16 @@ export class MergeConflictHandler {
                             rightArrow.onclick = () => window.acceptChange(index, 'remote');
                             remoteSection.appendChild(rightArrow);
 
-                            // Add click handler to make section active
+                            // Add click handlers to update current conflict index
                             localSection.addEventListener('click', () => {
-                                document.querySelectorAll('.conflict-section').forEach(s => s.classList.remove('active'));
-                                resolvedSection.classList.add('active');
                                 currentConflict = index;
                             });
                             
                             remoteSection.addEventListener('click', () => {
-                                document.querySelectorAll('.conflict-section').forEach(s => s.classList.remove('active'));
-                                resolvedSection.classList.add('active');
                                 currentConflict = index;
                             });
                             
                             resolvedSection.addEventListener('click', () => {
-                                document.querySelectorAll('.conflict-section').forEach(s => s.classList.remove('active'));
-                                resolvedSection.classList.add('active');
                                 currentConflict = index;
                             });
 
@@ -725,21 +683,6 @@ export class MergeConflictHandler {
                         const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
                         if (!resolvedSection) return;
                         
-                        // Check if user has made manual edits they might want to keep
-                        const hasUserEdits = Array.from(resolvedSection.querySelectorAll('.conflict-resolved'))
-                            .some(line => {
-                                // If line has content and it's different from the original text
-                                return line.textContent.trim() && 
-                                       line.dataset.originalText !== line.textContent;
-                            });
-                            
-                        if (hasUserEdits) {
-                            // Ask for confirmation before overwriting user edits
-                            if (!confirm('You have manual edits in this section. Do you want to overwrite them?')) {
-                                return;
-                            }
-                        }
-                        
                         // Clear previous content
                         const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
                         Array.from(resolvedLines).forEach(line => line.remove());
@@ -751,12 +694,6 @@ export class MergeConflictHandler {
                             lineElement.classList.add(source === 'local' ? 'from-local' : 'from-remote');
                             resolvedSection.appendChild(lineElement);
                         });
-                        
-                        // Highlight the active section
-                        document.querySelectorAll('.conflict-section').forEach(section => {
-                            section.classList.remove('active');
-                        });
-                        resolvedSection.classList.add('active');
                     }
 
                     function clearResolvedSection(index) {
@@ -782,12 +719,6 @@ export class MergeConflictHandler {
                             // Create empty line with default styling (no source class)
                             resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
                         }
-                        
-                        // Highlight the active section
-                        document.querySelectorAll('.conflict-section').forEach(section => {
-                            section.classList.remove('active');
-                        });
-                        resolvedSection.classList.add('active');
                     }
 
                     // Make functions available to the window object so they can be called from HTML
@@ -797,71 +728,45 @@ export class MergeConflictHandler {
                     // Improved scroll synchronization for all panels
                     function setupScrollSync() {
                         const panels = document.querySelectorAll('.panel-content');
-                        const panelsArray = Array.from(panels);
+                        const mainScroll = document.getElementById('main-scroll');
+                        const scrollContent = document.getElementById('scroll-content');
                         
-                        // Create a master scroll container that covers the entire viewport
-                        const masterScrollContainer = document.createElement('div');
-                        masterScrollContainer.className = 'master-scroll-container';
-                        document.body.appendChild(masterScrollContainer);
-                        
-                        // Create content for the master scrollbar
-                        const masterScrollContent = document.createElement('div');
-                        masterScrollContent.className = 'master-scroll-content';
-                        masterScrollContainer.appendChild(masterScrollContent);
-                        
-                        // Disable vertical scrolling on all panels
-                        panelsArray.forEach(panel => {
-                            panel.style.overflowY = 'hidden';
-                        });
-                        
-                        // Function to update the height of the master scroll content
-                        function updateMasterScrollHeight() {
+                        // Function to update the height of the scroll content
+                        function updateScrollHeight() {
                             // Find the maximum height among all panels
-                            const maxHeight = Math.max(...panelsArray.map(panel => {
+                            const maxHeight = Math.max(...Array.from(panels).map(panel => {
                                 const content = panel.querySelector('.code-container');
                                 return content ? content.scrollHeight : 0;
                             }));
                             
-                            // Add some extra padding to ensure we can scroll to the very bottom
-                            masterScrollContent.style.height = (maxHeight + 100) + 'px';
+                            // Set the height of the scroll content
+                            scrollContent.style.height = (maxHeight + 100) + 'px';
                         }
                         
-                        // Function to sync panels with master scroll
-                        function syncFromMasterScroll() {
-                            const scrollTop = masterScrollContainer.scrollTop;
-                            panelsArray.forEach(panel => {
+                        // Function to sync panel positions with main scroll
+                        function syncPanelsToScroll() {
+                            const scrollTop = mainScroll.scrollTop;
+                            
+                            // Update all panels' scroll position
+                            panels.forEach(panel => {
                                 panel.scrollTop = scrollTop;
                             });
                         }
                         
-                        // Listen for scroll events on the master container
-                        masterScrollContainer.addEventListener('scroll', syncFromMasterScroll, { passive: true });
+                        // Listen for scroll events on the main scroll container
+                        mainScroll.addEventListener('scroll', syncPanelsToScroll, { passive: true });
                         
-                        // Make the master scroll container capture wheel events
-                        document.addEventListener('wheel', (event) => {
-                            // Only handle vertical scrolling
-                            if (Math.abs(event.deltaY) > 0) {
-                                // Make the master container scrollable during wheel events
-                                masterScrollContainer.style.pointerEvents = 'auto';
-                                
-                                // After a short delay, make it non-interactive again
-                                setTimeout(() => {
-                                    masterScrollContainer.style.pointerEvents = 'none';
-                                }, 100);
-                            }
-                        }, { passive: true });
-                        
-                        // Update the master scroll height when content changes
-                        const observer = new MutationObserver(updateMasterScrollHeight);
-                        panelsArray.forEach(panel => {
+                        // Update the scroll height when content changes
+                        const observer = new MutationObserver(updateScrollHeight);
+                        panels.forEach(panel => {
                             observer.observe(panel, { childList: true, subtree: true });
                         });
                         
                         // Initial height update
-                        setTimeout(updateMasterScrollHeight, 100);
+                        setTimeout(updateScrollHeight, 100);
                         
                         // Update height on window resize
-                        window.addEventListener('resize', updateMasterScrollHeight);
+                        window.addEventListener('resize', updateScrollHeight);
                     }
                     
                     // Set up scroll synchronization after content is rendered
@@ -874,22 +779,6 @@ export class MergeConflictHandler {
                             
                             // Set up scroll sync after content is rendered
                             setTimeout(setupScrollSync, 100);
-                        }
-                    });
-
-                    document.addEventListener('keydown', (e) => {
-                        if (e.key === 'ArrowLeft') {
-                            acceptChange(currentConflict, 'local');
-                        } else if (e.key === 'ArrowRight') {
-                            acceptChange(currentConflict, 'remote');
-                        } else if (e.key === 'ArrowDown' || e.key === ' ') {
-                            if (currentConflict < conflicts.length - 1) {
-                                currentConflict++;
-                            }
-                        } else if (e.key === 'ArrowUp') {
-                            if (currentConflict > 0) {
-                                currentConflict--;
-                            }
                         }
                     });
 
