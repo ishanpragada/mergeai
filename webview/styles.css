@@ -8,80 +8,139 @@
     --vscode-remote-border: #ff0000;
     --vscode-button-background: #007acc;
     --vscode-button-hover: #005999;
+    --panel-width: 30vw;
+    --header-height: 32px;
 }
 
 body {
     background-color: var(--vscode-editor-background);
     color: var(--vscode-editor-foreground);
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.keyboard-hints {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.keyboard-hints kbd {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 0 4px;
+    font-size: 11px;
 }
 
 .editor-container {
     display: flex;
-    gap: 10px;
-    margin: 20px 0;
-    height: 70vh;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+    margin-bottom: 8px;
+    padding: 0 16px;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    width: calc((100% - 32px) / 3);
+    min-width: calc((100% - 32px) / 3);
+    max-width: calc((100% - 32px) / 3);
+    flex: none;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.panel-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.panel-title {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.panel-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.local-indicator {
+    background: var(--vscode-local-border);
+}
+
+.remote-indicator {
+    background: var(--vscode-remote-border);
+}
+
+.merged-indicator {
+    background: #007acc;
 }
 
 .editor-panel {
     flex: 1;
-    font-family: 'Courier New', monospace;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    resize: none;
-    white-space: pre;
-    overflow: auto;
-    font-size: 14px;
-    line-height: 1.4;
-    background-color: var(--vscode-editor-background);
-}
-
-.line-container {
-    display: flex;
-    align-items: stretch;
-}
-
-.line-number {
-    user-select: none;
-    text-align: right;
-    padding: 0 8px;
-    min-width: 40px;
-    color: var(--vscode-line-number-color);
-    background-color: var(--vscode-editor-background);
-    border-right: 1px solid #ccc;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: 'SF Mono', Monaco, Menlo, Consolas, 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
 }
 
 .conflict-line {
-    display: block;
-    padding: 2px 4px;
-    margin: 2px 0;
+    padding: 4px 8px;
+    border-radius: 4px;
     cursor: pointer;
-    border-radius: 3px;
-    transition: all 0.2s ease;
-    position: relative;
+    transition: background-color 0.1s;
+    white-space: nowrap;
+    overflow-x: auto;
+    min-height: 20px;
+}
+
+.conflict-line:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .local-conflict {
     background-color: var(--vscode-local-conflict);
-    border-left: 3px solid var(--vscode-local-border);
+    border-left: 2px solid var(--vscode-local-border);
 }
 
 .remote-conflict {
     background-color: var(--vscode-remote-conflict);
-    border-left: 3px solid var(--vscode-remote-border);
+    border-left: 2px solid var(--vscode-remote-border);
 }
 
 .current-conflict {
-    outline: 2px solid #007acc;
-    z-index: 1;
+    outline: 2px solid var(--vscode-button-background);
 }
 
 .accepted {
     opacity: 0.7;
     cursor: not-allowed;
-    background-color: rgba(150, 150, 150, 0.1);
 }
 
 .rejected {
@@ -90,89 +149,29 @@ body {
     text-decoration: line-through;
 }
 
-.panel-header {
-    font-weight: bold;
-    margin-bottom: 5px;
-    padding: 5px;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-    text-align: center;
-    color: var(--vscode-editor-foreground);
-}
-
-.arrow-buttons {
-    position: absolute;
-    right: 8px;
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-.arrow-button {
-    background: none;
-    border: none;
-    color: var(--vscode-editor-foreground);
-    cursor: pointer;
-    padding: 2px 6px;
-    font-size: 16px;
-    border-radius: 3px;
-}
-
-.arrow-button:hover {
-    background-color: #2a2d2e;
-}
-
-.arrow-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .controls {
     display: flex;
-    gap: 10px;
-    margin: 10px 0;
     justify-content: center;
+    padding: 8px 0;
 }
 
-button {
-    padding: 8px 16px;
+.commit-button {
+    background: var(--vscode-button-background);
+    color: white;
     border: none;
     border-radius: 4px;
-    background-color: var(--vscode-button-background);
-    color: white;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s;
 }
 
-button:hover {
-    background-color: var(--vscode-button-hover);
+.commit-button:hover {
+    background: var(--vscode-button-hover);
 }
 
-button:active {
-    background-color: #004c80;
-}
-
-.hint {
-    margin: 10px 0;
-    padding: 10px;
-    background-color: #f8f8f8;
-    border-radius: 4px;
-    text-align: center;
-    font-size: 14px;
-}
-
-kbd {
-    display: inline-block;
-    padding: 3px 5px;
-    font: 11px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-    line-height: 10px;
-    color: #444d56;
-    vertical-align: middle;
-    background-color: #fafbfc;
-    border: solid 1px #d1d5da;
-    border-bottom-color: #c6cbd1;
-    border-radius: 3px;
-    box-shadow: inset 0 -1px 0 #c6cbd1;
-    margin: 0 2px;
+.commit-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

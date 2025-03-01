@@ -37,23 +37,34 @@ function getWebviewContent(cspSource: string, scriptUri: vscode.Uri, styleUri: v
             <title>Merge Conflict Resolution</title>
         </head>
         <body>
-            <div id="keyboard-hints"></div>
-            <div class="editor-container">
-                <div class="panel">
-                    <div class="panel-header">Local Changes</div>
-                    <div id="local-editor" class="editor-panel"></div>
+            <div class="app-container">
+                <div id="keyboard-hints" class="keyboard-hints"></div>
+                <div class="editor-container">
+                    <div class="panel local-panel">
+                        <div class="panel-header">
+                            <span class="panel-title">Local Changes</span>
+                            <div class="panel-indicator local-indicator"></div>
+                        </div>
+                        <div id="local-editor" class="editor-panel"></div>
+                    </div>
+                    <div class="panel merged-panel">
+                        <div class="panel-header">
+                            <span class="panel-title">Resolved Code</span>
+                            <div class="panel-indicator merged-indicator"></div>
+                        </div>
+                        <div id="merged-editor" class="editor-panel"></div>
+                    </div>
+                    <div class="panel remote-panel">
+                        <div class="panel-header">
+                            <span class="panel-title">Remote Changes</span>
+                            <div class="panel-indicator remote-indicator"></div>
+                        </div>
+                        <div id="remote-editor" class="editor-panel"></div>
+                    </div>
                 </div>
-                <div class="panel">
-                    <div class="panel-header">Resolved Code</div>
-                    <div id="merged-editor" class="editor-panel"></div>
+                <div class="controls">
+                    <button id="commitChanges" class="commit-button">Commit Resolution</button>
                 </div>
-                <div class="panel">
-                    <div class="panel-header">Remote Changes</div>
-                    <div id="remote-editor" class="editor-panel"></div>
-                </div>
-            </div>
-            <div class="controls">
-                <button id="commitChanges">Commit Resolution</button>
             </div>
             <script src="${scriptUri}"></script>
         </body>

@@ -3,6 +3,9 @@ import * as vscode from 'vscode';
 export class MergeConflictHandler {
     constructor(private context: vscode.ExtensionContext) {}
 
+    /**
+     * Main entry point to handle merge conflicts in the active editor.
+     */
     async handleMergeConflict(editor: vscode.TextEditor) {
         const document = editor.document;
         const text = document.getText();
@@ -38,6 +41,9 @@ export class MergeConflictHandler {
         });
     }
 
+    /**
+     * Parse merge conflicts (<<<, ===, >>>) from the file text.
+     */
     private parseMergeConflicts(text: string) {
         const conflicts = [];
         const regex = /<<<<<<< (.*?)\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> (.*?)(?:\n|$)/g;
@@ -57,6 +63,10 @@ export class MergeConflictHandler {
         return conflicts;
     }
 
+    /**
+     * Returns the HTML content for the merge conflict resolution panel,
+     * with fixed-width panels and horizontal scrollbars.
+     */
     private getWebviewContent(webview: vscode.Webview): string {
         return `
             <!DOCTYPE html>
@@ -65,29 +75,48 @@ export class MergeConflictHandler {
                 <meta charset="UTF-8">
                 <title>Merge Conflict Resolution</title>
                 <style>
-                    body {
-                        padding: 20px;
-                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                        height: 100vh;
+                    html, body {
+                        height: 100%;
                         margin: 0;
+                        padding: 0;
+                        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                    }
+
+                    body {
                         display: flex;
                         flex-direction: column;
+                        box-sizing: border-box;
                     }
+
                     .panels-container {
                         display: flex;
+                        /* Make sure panels are side by side and do not wrap */
+                        flex-direction: row;
+                        justify-content: space-between;
+                        align-items: stretch;
+
+                        /* Ensure the container takes up remaining space to show all 3 panels */
+                        flex: 1;
+
+                        /* Gap between panels */
                         gap: 20px;
-                        flex: 1;
-                        min-height: 0;
+                        /* Optional: padding around the container edges */
+                        padding: 10px;
+                        box-sizing: border-box;
                     }
+
                     .panel {
-                        flex: 1;
+                        /* Fix each panel to one-third of the container */
+                        width: 33%;
+                        min-width: 0; /* Important: prevents panel from growing when content is wide */
                         border: 1px solid #ddd;
                         border-radius: 6px;
                         background: #fff;
                         display: flex;
                         flex-direction: column;
-                        min-height: 0;
+                        overflow: hidden; /* Hide overflow here; child will scroll */
                     }
+
                     .panel-header {
                         font-weight: 600;
                         padding: 15px;
@@ -95,22 +124,32 @@ export class MergeConflictHandler {
                         background: #f6f8fa;
                         border-radius: 6px 6px 0 0;
                     }
+
                     .panel-content {
-                        padding: 15px;
-                        overflow-y: auto;
+                        /* This is the scrollable area inside each panel */
                         flex: 1;
+                        padding: 15px;
+
+                        /* Enable vertical and horizontal scrolling inside the panel */
+                        overflow-y: auto;
+                        overflow-x: auto;
+
+                        /* Do not wrap long lines; let them scroll horizontally */
+                        white-space: pre;
                     }
+
                     .code-line {
                         font-family: monospace;
                         padding: 2px 4px;
-                        white-space: pre;
+                        white-space: pre; /* Ensures code lines do not wrap */
                         min-height: 1em;
                     }
-                    .conflict-local { 
+
+                    .conflict-local {
                         background-color: rgba(46, 160, 67, 0.1);
                         border-left: 2px solid #2ea043;
                     }
-                    .conflict-remote { 
+                    .conflict-remote {
                         background-color: rgba(248, 81, 73, 0.1);
                         border-left: 2px solid #f85149;
                     }
@@ -118,6 +157,8 @@ export class MergeConflictHandler {
                         background-color: rgba(246, 248, 250, 0.5);
                         border-left: 2px solid #0366d6;
                     }
+
+                    /* Arrow buttons for local/remote acceptance */
                     .arrow-buttons {
                         position: absolute;
                         display: flex;
@@ -144,6 +185,7 @@ export class MergeConflictHandler {
                     .arrow-button:active {
                         transform: scale(0.95);
                     }
+
                     .commit-button {
                         display: block;
                         margin: 20px auto;
@@ -159,6 +201,7 @@ export class MergeConflictHandler {
                     .commit-button:hover {
                         background: #2c974b;
                     }
+
                     .keyboard-hint {
                         text-align: center;
                         color: #586069;
@@ -324,6 +367,9 @@ export class MergeConflictHandler {
         `;
     }
 
+    /**
+     * Applies the resolved code back into the editor and saves the file.
+     */
     private async applyResolution(editor: vscode.TextEditor, resolvedCode: string) {
         const document = editor.document;
         const edit = new vscode.WorkspaceEdit();
