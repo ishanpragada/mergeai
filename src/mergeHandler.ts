@@ -136,6 +136,7 @@ export class MergeConflictHandler {
 
                         /* Do not wrap long lines; let them scroll horizontally */
                         white-space: pre;
+                        position: relative; /* Add position relative for absolute positioning of children */
                     }
 
                     .code-line {
@@ -143,19 +144,42 @@ export class MergeConflictHandler {
                         padding: 2px 4px;
                         white-space: pre; /* Ensures code lines do not wrap */
                         min-height: 1em;
+                        position: relative; /* Position relative for the pseudo-element */
+                        z-index: 1; /* Ensure text is above the background */
+                    }
+
+                    /* Use pseudo-elements to create full-width backgrounds */
+                    .conflict-local::before,
+                    .conflict-remote::before,
+                    .conflict-resolved::before {
+                        content: "";
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        height: 100%;
+                        width: 100vw; /* Use viewport width to ensure it extends beyond visible area */
+                        z-index: -1; /* Place behind the text */
                     }
 
                     .conflict-local {
-                        background-color: rgba(46, 160, 67, 0.1);
                         border-left: 2px solid #2ea043;
                     }
+                    .conflict-local::before {
+                        background-color: rgba(46, 160, 67, 0.1);
+                    }
+
                     .conflict-remote {
-                        background-color: rgba(248, 81, 73, 0.1);
                         border-left: 2px solid #f85149;
                     }
+                    .conflict-remote::before {
+                        background-color: rgba(248, 81, 73, 0.1);
+                    }
+
                     .conflict-resolved {
-                        background-color: rgba(246, 248, 250, 0.5);
                         border-left: 2px solid #0366d6;
+                    }
+                    .conflict-resolved::before {
+                        background-color: rgba(246, 248, 250, 0.5);
                     }
 
                     /* Arrow buttons for local/remote acceptance */

@@ -112,12 +112,12 @@ body {
 
 .conflict-line {
     padding: 4px 8px;
-    border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.1s;
     white-space: nowrap;
-    overflow-x: auto;
-    min-height: 20px;
+    width: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
 }
 
 .conflict-line:hover {
@@ -127,15 +127,23 @@ body {
 .local-conflict {
     background-color: var(--vscode-local-conflict);
     border-left: 2px solid var(--vscode-local-border);
+    width: 100%;
+    min-width: max-content;
+    display: block;
 }
 
 .remote-conflict {
     background-color: var(--vscode-remote-conflict);
     border-left: 2px solid var(--vscode-remote-border);
+    width: 100%;
+    min-width: max-content;
+    display: block;
 }
 
 .current-conflict {
     outline: 2px solid var(--vscode-button-background);
+    width: 100%;
+    min-width: max-content;
 }
 
 .accepted {
