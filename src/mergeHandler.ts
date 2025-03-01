@@ -149,6 +149,15 @@ export class MergeConflictHandler {
                         font-size: 12px;
                         line-height: 1.5;
                         tab-size: 4;
+                        
+                        /* Hide scrollbars while maintaining scroll functionality */
+                        scrollbar-width: none; /* Firefox */
+                        -ms-overflow-style: none; /* IE and Edge */
+                    }
+                    
+                    /* Hide scrollbar for Chrome, Safari and Opera */
+                    .panel-content::-webkit-scrollbar {
+                        display: none;
                     }
 
                     /* Line number gutter */
@@ -254,6 +263,46 @@ export class MergeConflictHandler {
                     .conflict-resolved::before {
                         background-color: var(--vscode-editor-inactiveSelectionBackground, rgba(246, 248, 250, 0.1));
                     }
+                    
+                    /* Resolved content from local changes */
+                    .conflict-resolved.from-local {
+                        border-left: 2px solid #2ea043;
+                    }
+                    .conflict-resolved.from-local::before {
+                        background-color: var(--vscode-diffEditor-insertedTextBackground, rgba(46, 160, 67, 0.1));
+                    }
+                    
+                    /* Resolved content from remote changes */
+                    .conflict-resolved.from-remote {
+                        border-left: 2px solid #f85149;
+                    }
+                    .conflict-resolved.from-remote::before {
+                        background-color: var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.1));
+                    }
+
+                    /* Editable content styling */
+                    [contenteditable="true"] {
+                        outline: none;
+                        min-height: 1em;
+                        white-space: pre;
+                        cursor: text;
+                        border-left: 2px solid #0366d6;
+                    }
+                    
+                    [contenteditable="true"]:focus {
+                        background-color: var(--vscode-editor-selectionBackground, rgba(3, 102, 214, 0.2));
+                    }
+                    
+                    [contenteditable="true"]:empty::before {
+                        content: " ";
+                        color: transparent;
+                        display: inline-block;
+                    }
+                    
+                    /* Maintain syntax highlighting in editable content */
+                    [contenteditable="true"] .token {
+                        pointer-events: none; /* Prevent issues with text selection */
+                    }
 
                     /* Arrow button styling */
                     .arrow-button {
@@ -293,6 +342,36 @@ export class MergeConflictHandler {
                     .arrow-button.clear {
                         background: #6e7681;
                     }
+                    
+                    /* Individual clear button for each resolved section */
+                    .clear-section-button {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 50%;
+                        background: #6e7681;
+                        color: white;
+                        border: none;
+                        font-size: 10px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                        transition: transform 0.2s, background-color 0.2s;
+                        padding: 0;
+                        line-height: 1;
+                        position: absolute;
+                        right: 5px;
+                        top: 5px;
+                        z-index: 20;
+                        opacity: 0.7;
+                    }
+                    
+                    .clear-section-button:hover {
+                        transform: scale(1.1);
+                        opacity: 1;
+                    }
 
                     .commit-button {
                         display: block;
@@ -322,6 +401,39 @@ export class MergeConflictHandler {
                         border-radius: 3px;
                         padding: 2px 5px;
                         font-size: 11px;
+                    }
+
+                    /* Add CSS to ensure consistent panel heights */
+                    .panel-content {
+                        height: 100%;
+                        overflow-x: auto;
+                        overflow-y: hidden; /* Hide vertical scrollbars on all panels */
+                        scrollbar-width: none; /* Firefox */
+                        -ms-overflow-style: none; /* IE and Edge */
+                    }
+                    
+                    /* Hide scrollbar for Chrome, Safari and Opera */
+                    .panel-content::-webkit-scrollbar {
+                        display: none;
+                    }
+                    
+                    /* Create a master scrollbar container */
+                    .master-scroll-container {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        pointer-events: none; /* Allow clicking through to content */
+                        z-index: 1000;
+                    }
+                    
+                    /* Content for the master scrollbar */
+                    .master-scroll-content {
+                        height: 0; /* Will be set dynamically */
+                        width: 1px;
                     }
                 </style>
             </head>
@@ -366,6 +478,13 @@ export class MergeConflictHandler {
                     function createCodeElement(text, isConflict = false, type = '') {
                         const div = document.createElement('div');
                         div.className = 'code-line' + (isConflict ? ' conflict-' + type : '');
+                        
+                        // For resolved sections, make the content editable
+                        if (type === 'resolved') {
+                            div.contentEditable = 'true';
+                            div.spellcheck = false;
+                            div.dataset.originalText = text; // Store original text for reference
+                        }
                         
                         // Apply syntax highlighting with Prism.js
                         if (text) {
@@ -482,6 +601,17 @@ export class MergeConflictHandler {
                             resolvedSection.className = 'conflict-section';
                             resolvedSection.dataset.conflictIndex = index.toString();
                             resolvedSection.id = \`resolved-section-\${index}\`;
+                            
+                            // Add clear button for this specific resolved section
+                            const clearSectionButton = document.createElement('button');
+                            clearSectionButton.className = 'clear-section-button';
+                            clearSectionButton.textContent = 'X';
+                            clearSectionButton.title = 'Clear this section';
+                            clearSectionButton.onclick = (e) => {
+                                e.stopPropagation(); // Prevent triggering section click
+                                window.clearResolvedSection(index);
+                            };
+                            resolvedSection.appendChild(clearSectionButton);
 
                             // Add conflict code
                             const localLines = conflict.local.split('\\n');
@@ -586,20 +716,6 @@ export class MergeConflictHandler {
                                 lineNumber++;
                             });
                         }
-
-                        // Add clear button at the top of the resolved panel
-                        const clearButton = document.createElement('button');
-                        clearButton.className = 'arrow-button clear';
-                        clearButton.textContent = 'X';
-                        clearButton.title = 'Clear current selection';
-                        clearButton.style.position = 'absolute';
-                        clearButton.style.top = '10px';
-                        clearButton.style.left = '50%';
-                        clearButton.style.transform = 'translateX(-50%)';
-                        clearButton.onclick = () => {
-                            window.clearResolvedSection(currentConflict);
-                        };
-                        document.querySelector('.panels-container').appendChild(clearButton);
                     }
 
                     function acceptChange(index, source) {
@@ -609,13 +725,31 @@ export class MergeConflictHandler {
                         const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
                         if (!resolvedSection) return;
                         
+                        // Check if user has made manual edits they might want to keep
+                        const hasUserEdits = Array.from(resolvedSection.querySelectorAll('.conflict-resolved'))
+                            .some(line => {
+                                // If line has content and it's different from the original text
+                                return line.textContent.trim() && 
+                                       line.dataset.originalText !== line.textContent;
+                            });
+                            
+                        if (hasUserEdits) {
+                            // Ask for confirmation before overwriting user edits
+                            if (!confirm('You have manual edits in this section. Do you want to overwrite them?')) {
+                                return;
+                            }
+                        }
+                        
                         // Clear previous content
                         const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
                         Array.from(resolvedLines).forEach(line => line.remove());
                         
-                        // Add new content
+                        // Add new content with appropriate source class
                         lines.forEach(line => {
-                            resolvedSection.appendChild(createCodeElement(line, true, 'resolved'));
+                            const lineElement = createCodeElement(line, true, 'resolved');
+                            // Add class based on source
+                            lineElement.classList.add(source === 'local' ? 'from-local' : 'from-remote');
+                            resolvedSection.appendChild(lineElement);
                         });
                         
                         // Highlight the active section
@@ -631,7 +765,11 @@ export class MergeConflictHandler {
                         
                         // Clear content
                         const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
-                        Array.from(resolvedLines).forEach(line => line.remove());
+                        Array.from(resolvedLines).forEach(line => {
+                            // Remove source-specific classes
+                            line.classList.remove('from-local', 'from-remote');
+                            line.remove();
+                        });
                         
                         // Add empty lines
                         const conflict = conflicts[index];
@@ -641,6 +779,7 @@ export class MergeConflictHandler {
                         );
                         
                         for (let i = 0; i < maxLines; i++) {
+                            // Create empty line with default styling (no source class)
                             resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
                         }
                         
@@ -651,12 +790,90 @@ export class MergeConflictHandler {
                         resolvedSection.classList.add('active');
                     }
 
+                    // Make functions available to the window object so they can be called from HTML
+                    window.acceptChange = acceptChange;
+                    window.clearResolvedSection = clearResolvedSection;
+
+                    // Improved scroll synchronization for all panels
+                    function setupScrollSync() {
+                        const panels = document.querySelectorAll('.panel-content');
+                        const panelsArray = Array.from(panels);
+                        
+                        // Create a master scroll container that covers the entire viewport
+                        const masterScrollContainer = document.createElement('div');
+                        masterScrollContainer.className = 'master-scroll-container';
+                        document.body.appendChild(masterScrollContainer);
+                        
+                        // Create content for the master scrollbar
+                        const masterScrollContent = document.createElement('div');
+                        masterScrollContent.className = 'master-scroll-content';
+                        masterScrollContainer.appendChild(masterScrollContent);
+                        
+                        // Disable vertical scrolling on all panels
+                        panelsArray.forEach(panel => {
+                            panel.style.overflowY = 'hidden';
+                        });
+                        
+                        // Function to update the height of the master scroll content
+                        function updateMasterScrollHeight() {
+                            // Find the maximum height among all panels
+                            const maxHeight = Math.max(...panelsArray.map(panel => {
+                                const content = panel.querySelector('.code-container');
+                                return content ? content.scrollHeight : 0;
+                            }));
+                            
+                            // Add some extra padding to ensure we can scroll to the very bottom
+                            masterScrollContent.style.height = (maxHeight + 100) + 'px';
+                        }
+                        
+                        // Function to sync panels with master scroll
+                        function syncFromMasterScroll() {
+                            const scrollTop = masterScrollContainer.scrollTop;
+                            panelsArray.forEach(panel => {
+                                panel.scrollTop = scrollTop;
+                            });
+                        }
+                        
+                        // Listen for scroll events on the master container
+                        masterScrollContainer.addEventListener('scroll', syncFromMasterScroll, { passive: true });
+                        
+                        // Make the master scroll container capture wheel events
+                        document.addEventListener('wheel', (event) => {
+                            // Only handle vertical scrolling
+                            if (Math.abs(event.deltaY) > 0) {
+                                // Make the master container scrollable during wheel events
+                                masterScrollContainer.style.pointerEvents = 'auto';
+                                
+                                // After a short delay, make it non-interactive again
+                                setTimeout(() => {
+                                    masterScrollContainer.style.pointerEvents = 'none';
+                                }, 100);
+                            }
+                        }, { passive: true });
+                        
+                        // Update the master scroll height when content changes
+                        const observer = new MutationObserver(updateMasterScrollHeight);
+                        panelsArray.forEach(panel => {
+                            observer.observe(panel, { childList: true, subtree: true });
+                        });
+                        
+                        // Initial height update
+                        setTimeout(updateMasterScrollHeight, 100);
+                        
+                        // Update height on window resize
+                        window.addEventListener('resize', updateMasterScrollHeight);
+                    }
+                    
+                    // Set up scroll synchronization after content is rendered
                     window.addEventListener('message', event => {
                         const message = event.data;
                         if (message.command === 'setContent') {
                             conflicts = message.conflicts;
                             fileContent = message.fullContent;
                             renderContent();
+                            
+                            // Set up scroll sync after content is rendered
+                            setTimeout(setupScrollSync, 100);
                         }
                     });
 
@@ -685,7 +902,7 @@ export class MergeConflictHandler {
                                 if (!resolvedSection) return false;
                                 
                                 const lines = resolvedSection.querySelectorAll('.conflict-resolved');
-                                return Array.from(lines).every(line => line.textContent === '');
+                                return Array.from(lines).every(line => !line.textContent.trim());
                             });
                             
                         if (unresolvedSections.length > 0) {
@@ -701,55 +918,27 @@ export class MergeConflictHandler {
                         const allLines = [];
                         
                         // Process non-conflict lines and resolved conflict sections
-                        Array.from(resolvedContent.childNodes).forEach(node => {
-                            if (node.classList && node.classList.contains('conflict-section')) {
-                                // Get resolved lines from conflict section
-                                const lines = node.querySelectorAll('.conflict-resolved');
-                                Array.from(lines).forEach(line => {
-                                    allLines.push(line.textContent);
-                                });
-                            } else if (node.classList && node.classList.contains('code-line')) {
-                                // Regular non-conflict line
-                                allLines.push(node.textContent);
-                            }
-                        });
+                        const codeContainer = resolvedContent.querySelector('.code-container');
+                        if (codeContainer) {
+                            Array.from(codeContainer.childNodes).forEach(node => {
+                                if (node.classList && node.classList.contains('conflict-section')) {
+                                    // Get resolved lines from conflict section
+                                    const lines = node.querySelectorAll('.conflict-resolved');
+                                    Array.from(lines).forEach(line => {
+                                        // Get the actual text content, not the HTML with syntax highlighting
+                                        allLines.push(line.textContent);
+                                    });
+                                } else if (node.classList && node.classList.contains('code-line')) {
+                                    // Regular non-conflict line
+                                    allLines.push(node.textContent);
+                                }
+                            });
+                        }
                         
                         vscode.postMessage({ 
                             command: 'commitResolution', 
                             resolvedCode: allLines.join('\\n')
                         });
-                    });
-
-                    // Make functions available to the window object so they can be called from HTML
-                    window.acceptChange = acceptChange;
-                    window.clearResolvedSection = clearResolvedSection;
-
-                    // Flag to prevent recursive scroll events
-                    let isScrolling = false;
-                    
-                    // Synchronize only vertical scrolling across all panels
-                    function syncVerticalScroll(event) {
-                        if (isScrolling) return;
-                        
-                        isScrolling = true;
-                        const source = event.target;
-                        const panels = document.querySelectorAll('.panel-content');
-                        
-                        panels.forEach(panel => {
-                            if (panel !== source) {
-                                panel.scrollTop = source.scrollTop;
-                            }
-                        });
-                        
-                        // Reset the flag after a short delay
-                        setTimeout(() => {
-                            isScrolling = false;
-                        }, 10);
-                    }
-
-                    // Add scroll event listeners to all panels
-                    document.querySelectorAll('.panel-content').forEach(panel => {
-                        panel.addEventListener('scroll', syncVerticalScroll, { passive: true });
                     });
                 </script>
             </body>
