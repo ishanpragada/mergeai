@@ -1,71 +1,45 @@
-# mergeai README
+# MRGR - AI-Powered Merge Conflict Resolution for VS Code
 
-This is the README for your extension "mergeai". After writing up a brief description, we recommend including the following sections.
-
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+MRGR is a **VS Code extension** designed to **simplify merge conflict resolution**. With a clean UI and AI-assisted merging, developers can **resolve conflicts faster** and **with more confidence** than ever before.
 
 ---
 
-## Following extension guidelines
+## Features
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+- **Clear Multi-Panel UI** – Easily visualize the original, incoming, and merged code side by side.
+- **One-Click Merge Controls** – Click arrows to copy changes from either branch into the merged file.
+- **AI-Powered Conflict Resolution** – Automatically resolve conflicts by leveraging OpenAI’s API.
+- **Interactive Editing** – Edit AI-generated merges manually for precise control.
+- **Seamless Integration with VS Code** – Resolve conflicts directly inside your editor.
+- **Commit Merges Instantly** – Finalize and save your resolutions with a single click.
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+### Screenshots
 
-## Working with Markdown
+\!\[Merge Conflict View\]\(images/merge-conflict-view.png\)  
+\!\[AI-Powered Merge\]\(images/ai-merge.png\)  
+\!\[Quick Commit\]\(images/commit.png\)  
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+> Tip: Enable animations in the settings to see live previews of merges in action.
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+---
 
-## For more information
+## Requirements
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+- **VS Code v1.75.0 or later**  
+- **Node.js v16+** (required for dependencies)  
+- **OpenAI API Key** (if using AI-powered merging)  
 
-**Enjoy!**
+To install Node.js, visit [nodejs.org](https://nodejs.org/).  
+
+---
+
+## Installation
+
+### 1. Install from VS Code Marketplace (coming soon)
+Once published, install MRGR directly from the **VS Code Extensions Marketplace**.
+
+### 2. Manual Installation
+Until then, you can install MRGR manually:
+1. Clone this repository:  
+   ```sh
+   git clone https://github.com/your-repo/mergeai.git
