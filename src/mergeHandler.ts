@@ -274,7 +274,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                         width: calc(33% - 20px);
                         min-width: 0; /* Important: prevents panel from growing when content is wide */
                         border: 1px solid var(--vscode-panel-border);
-                        border-radius: 6px;
+                        border-radius: 2px;
                         background: var(--vscode-editor-background);
                         display: flex;
                         flex-direction: column;
@@ -288,7 +288,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                         border-bottom: 1px solid var(--vscode-panel-border);
                         background: var(--vscode-titleBar-activeBackground);
                         color: var(--vscode-titleBar-activeForeground);
-                        border-radius: 6px 6px 0 0;
+                        border-radius: 2px 2px 0 0;
                     }
 
                     .panel-content {
@@ -520,7 +520,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                         position: fixed; /* Keep fixed positioning */
                         z-index: 2001; /* Above the fixed overlay */
                         opacity: 0.8; /* Slightly more visible */
-                        pointer-events: auto; /* Ensure it can be clicked */
+                        pointer-events: auto;
                     }
                     
                     .clear-section-button:hover {
@@ -553,22 +553,6 @@ Please analyze both versions and provide a resolved version that best addresses 
                         pointer-events: auto;
                     }
 
-                    .commit-button {
-                        display: block;
-                        margin: 20px auto;
-                        padding: 8px 16px;
-                        background: var(--vscode-button-background, #2ea043);
-                        color: var(--vscode-button-foreground, white);
-                        border: none;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        transition: background-color 0.2s;
-                    }
-                    .commit-button:hover {
-                        background: var(--vscode-button-hoverBackground, #2c974b);
-                    }
-
                     /* AI Panel styles */
                     .ai-panel {
                         position: fixed;
@@ -583,6 +567,34 @@ Please analyze both versions and provide a resolved version that best addresses 
                         gap: 10px;
                         z-index: 3000;
                         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+                    }
+
+                    /* Fixed commit button above AI panel */
+                    .fixed-commit-button {
+                        position: fixed;
+                        bottom: 80px; /* Position above the AI panel */
+                        right: 20px;
+                        padding: 8px 16px;
+                        background: var(--vscode-button-background, #2ea043);
+                        color: var(--vscode-button-foreground, white);
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                        z-index: 3001; /* Above the AI panel */
+                        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                    }
+                    
+                    .fixed-commit-button:hover {
+                        background: var(--vscode-button-hoverBackground, #2c974b);
+                    }
+
+                    /* Bottom container for AI panel */
+                    .bottom-container {
+                        position: relative;
+                        width: 100%;
+                        margin-top: 20px;
                     }
 
                     .ai-input-container {
@@ -645,7 +657,6 @@ Please analyze both versions and provide a resolved version that best addresses 
                             </div>
                         </div>
                         <div class="bottom-container">
-                            <button id="commit" class="commit-button">Commit Resolution</button>
                             <div class="ai-panel">
                                 <div class="ai-input-container">
                                     <input type="text" class="ai-input" id="ai-prompt" placeholder="Ask AI to help resolve conflicts (e.g., 'Choose the version with better error handling')" />
@@ -654,6 +665,8 @@ Please analyze both versions and provide a resolved version that best addresses 
                                 <div class="ai-status" id="ai-status"></div>
                             </div>
                         </div>
+                        <!-- Fixed commit button above AI panel -->
+                        <button id="commit" class="fixed-commit-button">Commit Resolution</button>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-typescript.min.js"></script>
