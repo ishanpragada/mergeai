@@ -1,7 +1,24 @@
 import * as vscode from 'vscode';
+import OpenAI from 'openai';
+
 
 export class MergeConflictHandler {
-    constructor(private context: vscode.ExtensionContext) {}
+    private openai: OpenAI | undefined;
+
+    constructor(private context: vscode.ExtensionContext) {
+        this.initializeOpenAI();
+    }
+
+    /**
+     * Initialize the OpenAI client with the API key from settings
+     */
+    private initializeOpenAI() {
+        const config = vscode.workspace.getConfiguration('mergeai');
+        const apiKey = '';
+        if (apiKey) {
+            this.openai = new OpenAI({ apiKey });
+        }
+    }
 
     /**
      * Main entry point to handle merge conflicts in the active editor.
@@ -37,6 +54,45 @@ export class MergeConflictHandler {
                 await this.applyResolution(editor, message.resolvedCode);
             } else if (message.command === 'showError') {
                 vscode.window.showErrorMessage(message.message);
+            } else if (message.command === 'aiResolve') {
+                try {
+                    // Get the current conflict
+                    const conflict = message.conflicts[message.currentConflict];
+                    if (!conflict) {
+                        panel.webview.postMessage({
+                            command: 'aiResponse',
+                            error: 'No conflict selected'
+                        });
+                        return;
+                    }
+
+                    // Prepare the prompt for the AI
+                    const prompt = `Given a merge conflict between these two versions:
+
+Local version:
+${conflict.local}
+
+Remote version:
+${conflict.remote}
+
+User request: ${message.prompt}
+
+Please analyze both versions and provide a resolved version that best addresses the user's request. Return ONLY the resolved code, no explanations.`;
+
+                    // Call the AI API (this is a placeholder - you'll need to implement the actual AI call)
+                    const resolution = await this.callAI(prompt);
+
+                    // Send the resolution back to the webview
+                    panel.webview.postMessage({
+                        command: 'aiResponse',
+                        resolution: resolution
+                    });
+                } catch (error: any) {
+                    panel.webview.postMessage({
+                        command: 'aiResponse',
+                        error: error?.message || 'Unknown error occurred'
+                    });
+                }
             }
         });
     }
@@ -92,6 +148,36 @@ export class MergeConflictHandler {
                         box-sizing: border-box;
                     }
 
+                    .main-container {
+                        display: flex;
+                        flex-direction: column;
+                        height: 100vh;
+                        overflow: hidden;
+                    }
+
+                    .scroll-container {
+                        flex: 1;
+                        position: relative;
+                        overflow: hidden;
+                    }
+
+                    .bottom-container {
+                        flex-shrink: 0;
+                        padding: 10px;
+                        background: var(--vscode-editor-background);
+                        border-top: 1px solid var(--vscode-panel-border);
+                    }
+
+                    .panels-container {
+                        height: 100%;
+                        padding: 10px;
+                    }
+
+                    .commit-button {
+                        margin-bottom: 10px;
+                        width: 100%;
+                    }
+
                     .panels-container {
                         display: flex;
                         /* Make sure panels are side by side and do not wrap */
@@ -111,18 +197,54 @@ export class MergeConflictHandler {
                         overflow: hidden; /* Hide overflow */
                     }
                     
-                    /* Main scrollable container with vertical scrollbar */
-                    .scroll-container {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        overflow-y: scroll;
-                        overflow-x: hidden;
+                    /* AI Panel styles */
+                    .ai-panel {
+                        background: var(--vscode-editor-background);
+                        border-top: 1px solid var(--vscode-panel-border);
+                        padding: 15px;
+                        margin-top: 10px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+
+                    .ai-input-container {
+                        display: flex;
+                        gap: 10px;
+                    }
+
+                    .ai-input {
+                        flex: 1;
+                        padding: 8px 12px;
+                        border: 1px solid var(--vscode-panel-border);
+                        border-radius: 4px;
+                        background: var(--vscode-input-background);
+                        color: var(--vscode-input-foreground);
+                        font-family: inherit;
+                        font-size: 14px;
+                    }
+
+                    .ai-button {
+                        padding: 8px 16px;
+                        background: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    }
+
+                    .ai-button:hover {
+                        background: var(--vscode-button-hoverBackground);
+                    }
+
+                    .ai-status {
+                        font-size: 14px;
+                        color: var(--vscode-descriptionForeground);
+                        min-height: 20px;
                     }
                     
-                    /* Content wrapper that will be as tall as the tallest panel */
+                    /* Main scrollable container with vertical scrollbar */
                     .scroll-content {
                         width: 100%;
                         height: 0; /* Will be set dynamically */
@@ -382,44 +504,39 @@ export class MergeConflictHandler {
                         transform: scale(1.1);
                         opacity: 1;
                     }
-
-                    .commit-button {
-                        display: block;
-                        margin: 20px auto;
-                        padding: 8px 16px;
-                        background: var(--vscode-button-background, #2ea043);
-                        color: var(--vscode-button-foreground, white);
-                        border: none;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        transition: background-color 0.2s;
-                    }
-                    .commit-button:hover {
-                        background: var(--vscode-button-hoverBackground, #2c974b);
-                    }
                 </style>
             </head>
             <body>
-                <div class="scroll-container" id="main-scroll">
-                    <div class="scroll-content" id="scroll-content">
-                        <div class="panels-container">
-                            <div class="panel">
-                                <div class="panel-header">Local Changes</div>
-                                <div id="local-content" class="panel-content"></div>
-                            </div>
-                            <div class="panel">
-                                <div class="panel-header">Resolved Code</div>
-                                <div id="resolved-content" class="panel-content"></div>
-                            </div>
-                            <div class="panel">
-                                <div class="panel-header">Remote Changes</div>
-                                <div id="remote-content" class="panel-content"></div>
+                <div class="main-container">
+                    <div class="scroll-container" id="main-scroll">
+                        <div class="scroll-content" id="scroll-content">
+                            <div class="panels-container">
+                                <div class="panel">
+                                    <div class="panel-header">Local Changes</div>
+                                    <div id="local-content" class="panel-content"></div>
+                                </div>
+                                <div class="panel">
+                                    <div class="panel-header">Resolved Code</div>
+                                    <div id="resolved-content" class="panel-content"></div>
+                                </div>
+                                <div class="panel">
+                                    <div class="panel-header">Remote Changes</div>
+                                    <div id="remote-content" class="panel-content"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div class="bottom-container">
+                        <button id="commit" class="commit-button">Commit Resolution</button>
+                        <div class="ai-panel">
+                            <div class="ai-input-container">
+                                <input type="text" class="ai-input" id="ai-prompt" placeholder="Ask AI to help resolve conflicts (e.g., 'Choose the version with better error handling')" />
+                                <button class="ai-button" id="ai-submit">Ask AI</button>
+                            </div>
+                            <div class="ai-status" id="ai-status"></div>
+                        </div>
+                    </div>
                 </div>
-                <button id="commit" class="commit-button">Commit Resolution</button>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-typescript.min.js"></script>
@@ -829,6 +946,66 @@ export class MergeConflictHandler {
                             resolvedCode: allLines.join('\\n')
                         });
                     });
+
+                    // AI functionality
+                    document.getElementById('ai-submit').addEventListener('click', () => {
+                        const prompt = document.getElementById('ai-prompt').value;
+                        if (!prompt.trim()) {
+                            vscode.postMessage({ 
+                                command: 'showError', 
+                                message: 'Please enter a prompt for the AI.'
+                            });
+                            return;
+                        }
+
+                        // Show loading state
+                        const aiStatus = document.getElementById('ai-status');
+                        aiStatus.textContent = 'AI is analyzing the conflicts...';
+                        
+                        // Send request to extension
+                        vscode.postMessage({
+                            command: 'aiResolve',
+                            prompt: prompt,
+                            currentConflict: currentConflict,
+                            conflicts: conflicts
+                        });
+                    });
+
+                    // Handle AI response
+                    window.addEventListener('message', event => {
+                        const message = event.data;
+                        if (message.command === 'setContent') {
+                            conflicts = message.conflicts;
+                            fileContent = message.fullContent;
+                            renderContent();
+                            
+                            // Set up scroll sync after content is rendered
+                            setTimeout(setupScrollSync, 100);
+                        } else if (message.command === 'aiResponse') {
+                            const aiStatus = document.getElementById('ai-status');
+                            if (message.error) {
+                                aiStatus.textContent = 'Error: ' + message.error;
+                                return;
+                            }
+                            
+                            // Apply AI's resolution to the current conflict
+                            const resolvedSection = document.getElementById(\`resolved-section-\${currentConflict}\`);
+                            if (resolvedSection) {
+                                // Clear previous content
+                                const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                Array.from(resolvedLines).forEach(line => line.remove());
+                                
+                                // Add AI's resolved content
+                                message.resolution.split('\\n').forEach(line => {
+                                    const lineElement = createCodeElement(line, true, 'resolved');
+                                    lineElement.classList.add('from-ai');
+                                    resolvedSection.appendChild(lineElement);
+                                });
+                                
+                                aiStatus.textContent = 'AI resolution applied successfully!';
+                            }
+                        }
+                    });
                 </script>
             </body>
             </html>
@@ -839,19 +1016,131 @@ export class MergeConflictHandler {
      * Applies the resolved code back into the editor and saves the file.
      */
     private async applyResolution(editor: vscode.TextEditor, resolvedCode: string) {
-        const document = editor.document;
-        const edit = new vscode.WorkspaceEdit();
-        
-        // Replace the entire file content
-        const fullRange = new vscode.Range(
-            document.positionAt(0),
-            document.positionAt(document.getText().length)
-        );
-        
-        edit.replace(document.uri, fullRange, resolvedCode);
-        await vscode.workspace.applyEdit(edit);
-        await document.save();
-        
-        vscode.window.showInformationMessage('Merge conflicts resolved successfully!');
+        try {
+            const document = editor.document;
+            const edit = new vscode.WorkspaceEdit();
+            
+            // Get the original text and conflicts
+            const originalText = document.getText();
+            const conflicts = this.parseMergeConflicts(originalText);
+            
+            // Create the new text by replacing each conflict with its resolution
+            let newText = originalText;
+            for (const conflict of conflicts.reverse()) { // Process in reverse to maintain indices
+                const conflictText = originalText.substring(conflict.start, conflict.end);
+                newText = newText.substring(0, conflict.start) + resolvedCode + newText.substring(conflict.end);
+            }
+            
+            // Replace the entire file content
+            const fullRange = new vscode.Range(
+                document.positionAt(0),
+                document.positionAt(document.getText().length)
+            );
+            
+            edit.replace(document.uri, fullRange, newText);
+            await vscode.workspace.applyEdit(edit);
+            await document.save();
+            
+            vscode.window.showInformationMessage('Merge conflicts resolved successfully!');
+        } catch (error) {
+            vscode.window.showErrorMessage('Failed to apply resolution: ' + (error instanceof Error ? error.message : String(error)));
+        }
+    }
+
+    /**
+     * Gets AI resolution for a merge conflict with user preference
+     */
+    private async getAIResolutionWithPreference(conflict: string, preference: string): Promise<string> {
+        if (!this.openai) {
+            throw new Error('OpenAI API key not configured. Please set it in the extension settings.');
+        }
+
+        // Parse the conflict to extract current and incoming changes
+        const startMarker = '<<<<<<<';
+        const middleMarker = '=======';
+        const endMarker = '>>>>>>>';
+
+        const startMarkerPos = conflict.indexOf(startMarker);
+        const middleMarkerPos = conflict.indexOf(middleMarker);
+        const endMarkerPos = conflict.indexOf(endMarker);
+
+        if (startMarkerPos === -1 || middleMarkerPos === -1 || endMarkerPos === -1) {
+            throw new Error('Invalid conflict format');
+        }
+
+        // Extract current branch (HEAD) content
+        const currentStartPos = startMarkerPos + startMarker.length;
+        const currentBranch = conflict.substring(currentStartPos, middleMarkerPos).trim();
+
+        // Extract incoming content
+        const incomingStartPos = middleMarkerPos + middleMarker.length;
+        const incomingBranch = conflict.substring(incomingStartPos, endMarkerPos).trim();
+
+        // Create prompt for the AI with the user's preference
+        const promptText = `
+You are a merge conflict resolver. Below is a Git merge conflict. Please analyze both versions and suggest the best resolution, following the user's preference.
+
+CURRENT BRANCH (HEAD):
+\`\`\`
+${currentBranch}
+\`\`\`
+
+INCOMING BRANCH:
+\`\`\`
+${incomingBranch}
+\`\`\`
+
+USER PREFERENCE:
+${preference}
+
+Analyze both versions and provide the resolved code that:
+1. Follows the user's stated preference for how to handle the merge
+2. Preserves the intended functionality from both versions according to the preference
+3. Resolves any logical conflicts
+4. Maintains consistent style and formatting
+5. Does not include conflict markers
+
+ONLY RETURN THE RESOLVED CODE ITSELF, NO EXPLANATION OR ADDITIONAL TEXT.`;
+
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [
+                    { role: "system", content: "You are a code merge conflict resolution assistant. Your task is to analyze Git merge conflicts and suggest the best resolution. Only provide the resolved code without explanation or conflict markers." },
+                    { role: "user", content: promptText },
+                ]
+            });
+
+            const resolution = response.choices[0]?.message?.content?.trim() || "No resolution provided";
+            
+            // Clean up any remaining markdown code blocks if the AI included them
+            return resolution.replace(/```[\w]*\n|```$/g, '').trim();
+        } catch (error) {
+            console.error('Error fetching AI resolution with preference:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Makes a call to the AI service to get a resolution for the conflict.
+     */
+    private async callAI(prompt: string): Promise<string> {
+        try {
+            // The conflict object is already properly parsed in the aiResolve handler
+            // We don't need to parse the prompt text again
+            const conflict = `<<<<<<< HEAD
+${prompt.split('Local version:\n')[1].split('\n\nRemote version:')[0].trim()}
+=======
+${prompt.split('Remote version:\n')[1].split('\n\nUser request:')[0].trim()}
+>>>>>>> branch`;
+            const preference = prompt.split('User request:')[1].trim();
+
+            // Get AI resolution
+            const resolution = await this.getAIResolutionWithPreference(conflict, preference);
+            return resolution;
+        } catch (error) {
+            console.error('Error in AI resolution:', error);
+            throw error;
+        }
     }
 }

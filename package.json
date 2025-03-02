@@ -21,6 +21,16 @@
         "title": "Resolve Merge Conflict"
       }
     ],
+    "configuration": {
+      "title": "MergeAI",
+      "properties": {
+        "mergeai.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key for AI-powered merge conflict resolution"
+        }
+      }
+    },
     "menus": {
       "editor/context": [
         {
@@ -45,6 +55,9 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
+  },
+  "dependencies": {
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.70.0",
