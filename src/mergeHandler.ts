@@ -140,6 +140,11 @@ Please analyze both versions and provide a resolved version that best addresses 
      * with fixed-width panels and horizontal scrollbars.
      */
     private getWebviewContent(webview: vscode.Webview): string {
+        // Get the path to the Logo.png file
+        const logoUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'Logo.png'));
+        // Get the path to the wand icon
+        const wandIconUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'assets', '1101790.png'));
+        
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -201,7 +206,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                     }
 
                     .bridge-path.conflict.right {
-                        fill: rgba(248, 81, 73, 0.1);
+                        fill: rgba(0, 120, 212, 0.1);
                     }
 
                     .bridge-path.resolved.from-local {
@@ -209,7 +214,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                     }
 
                     .bridge-path.resolved.from-remote {
-                        fill: rgba(248, 81, 73, 0.1);
+                        fill: rgba(0, 120, 212, 0.1);
                     }
 
                     .bridge-path.highlighted {
@@ -408,10 +413,10 @@ Please analyze both versions and provide a resolved version that best addresses 
                     }
 
                     .conflict-remote {
-                        border-left: 2px solid #f85149;
+                        border-left: 2px solid #0078d4;
                     }
                     .conflict-remote::before {
-                        background-color: rgba(248, 81, 73, 0.1);
+                        background-color: rgba(0, 120, 212, 0.1);
                     }
 
                     .conflict-resolved {
@@ -431,10 +436,18 @@ Please analyze both versions and provide a resolved version that best addresses 
                     
                     /* Resolved content from remote changes */
                     .conflict-resolved.from-remote {
-                        border-left: 2px solid #f85149;
+                        border-left: 2px solid #0078d4;
                     }
                     .conflict-resolved.from-remote::before {
-                        background-color: rgba(248, 81, 73, 0.1);
+                        background-color: rgba(0, 120, 212, 0.1);
+                    }
+                    
+                    /* Resolved content from AI changes - with yellow highlight */
+                    .conflict-resolved.from-ai {
+                        border-left: 2px solid #e3b341;
+                    }
+                    .conflict-resolved.from-ai::before {
+                        background-color: rgba(227, 179, 65, 0.15);
                     }
 
                     /* Editable content styling */
@@ -492,7 +505,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                     }
 
                     .arrow-button.right {
-                        background: #f85149;
+                        background: #0078d4;
                     }
 
                     .arrow-button.clear {
@@ -510,7 +523,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                         font-size: 10px;
                         font-weight: bold;
                         cursor: pointer;
-                        display: flex;
+                        display: none; /* Start hidden by default */
                         align-items: center;
                         justify-content: center;
                         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
@@ -561,18 +574,19 @@ Please analyze both versions and provide a resolved version that best addresses 
                         right: 0;
                         background: var(--vscode-editor-background);
                         border-top: 1px solid var(--vscode-panel-border);
-                        padding: 20px;
+                        padding: 17px 17px; /* Reduced vertical padding */
                         display: flex;
-                        flex-direction: column;
-                        gap: 10px;
+                        flex-direction: column; /* Changed back to column for vertical layout */
+                        gap: 10px; /* Reduced gap */
                         z-index: 3000;
                         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+                        height: 80px; /* Adjusted height to accommodate status below */
                     }
 
                     /* Fixed commit button above AI panel */
                     .fixed-commit-button {
                         position: fixed;
-                        bottom: 80px; /* Position above the AI panel */
+                        bottom: 130px; /* Adjusted position due to taller AI panel */
                         right: 20px;
                         padding: 8px 16px;
                         background: var(--vscode-button-background, #2ea043);
@@ -599,28 +613,65 @@ Please analyze both versions and provide a resolved version that best addresses 
 
                     .ai-input-container {
                         display: flex;
-                        gap: 10px;
+                        align-items: center;
+                        position: relative;
+                        gap: 10px; /* Add gap between input and button */
+                        width: 100%; /* Take full width */
+                    }
+
+                    /* Logo circle */
+                    .ai-logo {
+                        width: 32px; /* Slightly smaller */
+                        height: 32px; /* Slightly smaller */
+                        background: url("${logoUri}");
+                        background-size: contain;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        flex-shrink: 0;
                     }
 
                     .ai-input {
-                        flex: 1;
-                        padding: 8px 12px;
+                        flex: 1; /* Take available space but not all */
+                        padding: 8px 12px; /* Removed right padding since button is outside */
+                        height: 36px; /* Reduced height */
                         border: 1px solid var(--vscode-panel-border);
                         border-radius: 4px;
                         background: var(--vscode-input-background);
                         color: var(--vscode-input-foreground);
                         font-family: inherit;
                         font-size: 14px;
+                        resize: none; /* Prevent manual resizing */
+                        overflow-y: auto; /* Allow vertical scrolling */
+                        line-height: 1.4; /* Better line spacing for multiline text */
                     }
 
                     .ai-button {
-                        padding: 8px 16px;
+                        position: static; /* Changed from absolute to static */
+                        padding: 4px; /* Reduced padding */
                         background: var(--vscode-button-background);
                         color: var(--vscode-button-foreground);
                         border: none;
                         border-radius: 4px;
                         cursor: pointer;
                         font-size: 14px;
+                        height: 36px; /* Match input height */
+                        width: 36px; /* Slightly wider */
+                        display: flex;
+                        align-items: center;
+                        justify-content: center; /* Center the icon */
+                        flex-shrink: 0; /* Prevent shrinking */
+                    }
+
+                    /* Wand icon for AI button */
+                    .wand-icon {
+                        display: inline-block;
+                        width: 20px; /* Slightly larger icon */
+                        height: 20px; /* Slightly larger icon */
+                        background-image: url("${wandIconUri}");
+                        background-size: contain;
+                        background-repeat: no-repeat;
+                        background-position: center;
+                        filter: brightness(0) invert(1); /* Make it monochrome white */
                     }
 
                     .ai-button:hover {
@@ -628,9 +679,12 @@ Please analyze both versions and provide a resolved version that best addresses 
                     }
 
                     .ai-status {
+                        margin-left: 42px;
                         font-size: 14px;
                         color: var(--vscode-descriptionForeground);
                         min-height: 20px;
+                        width: 100%; /* Take full width */
+                        text-overflow: ellipsis; /* Show ellipsis for overflow */
                     }
                 </style>
             </head>
@@ -659,8 +713,9 @@ Please analyze both versions and provide a resolved version that best addresses 
                         <div class="bottom-container">
                             <div class="ai-panel">
                                 <div class="ai-input-container">
-                                    <input type="text" class="ai-input" id="ai-prompt" placeholder="Ask AI to help resolve conflicts (e.g., 'Choose the version with better error handling')" />
-                                    <button class="ai-button" id="ai-submit">Ask AI</button>
+                                    <div class="ai-logo"></div>
+                                    <textarea class="ai-input" id="ai-prompt" placeholder="Ask MRGR AI to help resolve conflicts (e.g., 'Choose the version with better error handling')"></textarea>
+                                    <button class="ai-button" id="ai-submit" title="Ask MRGR AI"><span class="wand-icon"></span></button>
                                 </div>
                                 <div class="ai-status" id="ai-status"></div>
                             </div>
@@ -685,6 +740,8 @@ Please analyze both versions and provide a resolved version that best addresses 
                     let currentConflict = 0;
                     let conflicts = [];
                     let fileContent = '';
+                    // Store resolved sections to persist across tab changes
+                    let resolvedSections = [];
 
                     function createCodeElement(text, isConflict = false, type = '') {
                         const div = document.createElement('div');
@@ -823,10 +880,11 @@ Please analyze both versions and provide a resolved version that best addresses 
                             // Add clear button for this specific resolved section
                             const clearSectionButton = document.createElement('button');
                             clearSectionButton.className = 'clear-section-button';
-                                    clearSectionButton.id = \`clear-button-\${index}\`;
+                            clearSectionButton.id = \`clear-button-\${index}\`;
                             clearSectionButton.textContent = 'X';
                             clearSectionButton.title = 'Clear this section';
-                                    clearSectionButton.style.pointerEvents = 'auto'; // Make sure it can be clicked
+                            clearSectionButton.style.pointerEvents = 'auto'; // Make sure it can be clicked
+                            clearSectionButton.style.display = 'none'; // Start hidden by default
                             clearSectionButton.onclick = (e) => {
                                 e.stopPropagation(); // Prevent triggering section click
                                 window.clearResolvedSection(index);
@@ -841,8 +899,20 @@ Please analyze both versions and provide a resolved version that best addresses 
                                     
                                     // Position the button initially with a slightly longer delay to ensure section is fully rendered
                                     setTimeout(() => {
-                                        positionClearButtonFixed(index);
-                                    }, 100);
+                                        // Make sure the section is visible before showing the button
+                                        const resolvedPanel = document.getElementById('resolved-content');
+                                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                        
+                                        if (resolvedPanel && resolvedSection) {
+                                            const rect = resolvedSection.getBoundingClientRect();
+                                            const panelRect = resolvedPanel.getBoundingClientRect();
+                                            
+                                            // Only position and show the button if the section is visible
+                                            if (rect.top >= panelRect.top && rect.bottom <= panelRect.bottom && rect.height > 0) {
+                                                positionClearButtonFixed(index);
+                                            }
+                                        }
+                                    }, 200);
 
                             // Add conflict code
                             const localLines = conflict.local.split('\\n');
@@ -967,6 +1037,9 @@ Please analyze both versions and provide a resolved version that best addresses 
                                 // After all content is rendered, draw the bridges
                                 setTimeout(() => {
                                     drawBridges();
+                                    
+                                    // Restore any previously resolved sections
+                                    restoreResolvedSections();
                                 }, 200);
                     }
 
@@ -988,6 +1061,12 @@ Please analyze both versions and provide a resolved version that best addresses 
                             lineElement.classList.add(source === 'local' ? 'from-local' : 'from-remote');
                             resolvedSection.appendChild(lineElement);
                         });
+                        
+                        // Store the resolved content for persistence
+                        resolvedSections[index] = {
+                            content: lines,
+                            source: source
+                        };
                                 
                                 // Make sure buttons stay in place after accepting changes
                                 setTimeout(() => {
@@ -1023,7 +1102,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                         const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
                         Array.from(resolvedLines).forEach(line => {
                             // Remove source-specific classes
-                            line.classList.remove('from-local', 'from-remote');
+                            line.classList.remove('from-local', 'from-remote', 'from-ai');
                             line.remove();
                         });
                         
@@ -1037,6 +1116,11 @@ Please analyze both versions and provide a resolved version that best addresses 
                         for (let i = 0; i < maxLines; i++) {
                             // Create empty line with default styling (no source class)
                             resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
+                        }
+                        
+                        // Remove the stored resolved content for this section
+                        if (resolvedSections[index]) {
+                            delete resolvedSections[index];
                         }
                                 
                                 // Reset bridges to conflict state
@@ -1132,7 +1216,7 @@ Please analyze both versions and provide a resolved version that best addresses 
                                     // Check if this conflict is resolved
                                     const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
                                     const isResolved = Array.from(resolvedLines).some(function(line) {
-                                        return line.classList.contains('from-local') || line.classList.contains('from-remote');
+                                        return line.classList.contains('from-local') || line.classList.contains('from-remote') || line.classList.contains('from-ai');
                                     });
                                     
                                     if (isResolved) {
@@ -1141,14 +1225,26 @@ Please analyze both versions and provide a resolved version that best addresses 
                                             return line.classList.contains('from-local');
                                         });
                                         
+                                        const fromRemote = Array.from(resolvedLines).some(function(line) {
+                                            return line.classList.contains('from-remote');
+                                        });
+                                        
+                                        const fromAI = Array.from(resolvedLines).some(function(line) {
+                                            return line.classList.contains('from-ai');
+                                        });
+                                        
                                         if (fromLocal) {
                                             leftBridge.classList.remove('conflict');
                                             leftBridge.classList.add('resolved', 'from-local');
                                             rightBridge.classList.add('fading');
-                                        } else {
+                                        } else if (fromRemote) {
                                             rightBridge.classList.remove('conflict');
                                             rightBridge.classList.add('resolved', 'from-remote');
                                             leftBridge.classList.add('fading');
+                                        } else if (fromAI) {
+                                            // AI resolution - disconnect both bridges
+                                            leftBridge.classList.add('fading');
+                                            rightBridge.classList.add('fading');
                                         }
                                     }
                                     
@@ -1169,11 +1265,15 @@ Please analyze both versions and provide a resolved version that best addresses 
                                         leftBridge.classList.remove('conflict');
                                         leftBridge.classList.add('resolved', 'from-local');
                                         rightBridge.classList.add('fading');
-                                    } else {
+                                    } else if (source === 'remote') {
                                         // Remote was accepted
                                         rightBridge.classList.remove('conflict');
                                         rightBridge.classList.add('resolved', 'from-remote');
                                         leftBridge.classList.add('fading');
+                                    } else if (source === 'ai') {
+                                        // AI resolution - disconnect both bridges
+                                        leftBridge.classList.add('fading');
+                                        rightBridge.classList.add('fading');
                                     }
                                 } else {
                                     // If bridges weren't found, redraw them
@@ -1231,6 +1331,22 @@ Please analyze both versions and provide a resolved version that best addresses 
                                     if (resolvedSection && clearButton && resolvedPanel) {
                                         const rect = resolvedSection.getBoundingClientRect();
                                         const panelRect = resolvedPanel.getBoundingClientRect();
+                                        
+                                        // Check if the section is actually visible within the panel
+                                        const isVisible = (
+                                            rect.top >= panelRect.top && 
+                                            rect.bottom <= panelRect.bottom && 
+                                            rect.height > 0
+                                        );
+                                        
+                                        if (!isVisible) {
+                                            // Hide the button if the section is not visible
+                                            clearButton.style.display = 'none';
+                                            return;
+                                        }
+                                        
+                                        // Show the button if it was previously hidden
+                                        clearButton.style.display = 'flex';
                                         
                                         // Position at the top right corner of the section relative to the panel
                                         // This ensures the button stays fixed at the right edge of the panel regardless of horizontal scrolling
@@ -1296,13 +1412,15 @@ Please analyze both versions and provide a resolved version that best addresses 
                                     // Redraw bridges on scroll to ensure they stay in the correct position
                                     requestAnimationFrame(drawBridges);
                                     
-                                    // Update all clear buttons
-                                    document.querySelectorAll('.conflict-section').forEach(section => {
-                                        const index = section.dataset.conflictIndex;
-                                        if (index) {
-                                            positionClearButton(index);
-                                        }
-                                    });
+                                    // Update all clear buttons with a slight delay to ensure accurate positioning
+                                    setTimeout(() => {
+                                        document.querySelectorAll('.conflict-section').forEach(section => {
+                                            const index = section.dataset.conflictIndex;
+                                            if (index) {
+                                                positionClearButtonFixed(index);
+                                            }
+                                        });
+                                    }, 50);
                         }
                         
                         // Listen for scroll events on the main scroll container
@@ -1496,11 +1614,11 @@ Please analyze both versions and provide a resolved version that best addresses 
                                 } else if (message.command === 'refreshView') {
                                     // Re-render the view when the panel becomes visible again
                                     if (conflicts.length > 0 && fileContent) {
-                                        // Clear any existing state
+                                        // Clear any existing arrow buttons but preserve resolved sections
                                         document.querySelectorAll('.arrow-button').forEach(btn => btn.remove());
                                         window.buttonsPositioned = false;
                                         
-                                        // Re-render content
+                                        // Re-render content (this will also restore resolved sections)
                                         renderContent();
                                         
                                         // Re-setup scroll sync
@@ -1512,8 +1630,8 @@ Please analyze both versions and provide a resolved version that best addresses 
                                             setTimeout(drawBridges, 1000);
                                         }, 100);
                                     }
-                        }
-                    });
+                                }
+                            });
 
                     document.getElementById('commit').addEventListener('click', () => {
                         // Check if all conflicts have been resolved
@@ -1612,11 +1730,21 @@ Please analyze both versions and provide a resolved version that best addresses 
                                         Array.from(resolvedLines).forEach(line => line.remove());
                                         
                                         // Add AI's resolved content
-                                        message.resolution.split('\\n').forEach(line => {
+                                        const aiLines = message.resolution.split('\\n');
+                                        aiLines.forEach(line => {
                                             const lineElement = createCodeElement(line, true, 'resolved');
                                             lineElement.classList.add('from-ai');
                                             resolvedSection.appendChild(lineElement);
                                         });
+                                        
+                                        // Store the AI resolved content for persistence
+                                        resolvedSections[message.currentConflict] = {
+                                            content: aiLines,
+                                            source: 'ai'
+                                        };
+                                        
+                                        // Update bridges to show AI resolution
+                                        updateBridges(message.currentConflict, 'ai');
                                         
                                         aiStatus.textContent = \`AI resolution applied to conflict \${message.currentConflict + 1} of \${conflicts.length}\`;
                                     }
@@ -1626,6 +1754,46 @@ Please analyze both versions and provide a resolved version that best addresses 
                             // Make functions available to the window object so they can be called from HTML
                             window.acceptChange = acceptChange;
                             window.clearResolvedSection = clearResolvedSection;
+
+                    // Function to restore resolved sections from stored state
+                    function restoreResolvedSections() {
+                        // Loop through all stored resolved sections
+                        for (let index in resolvedSections) {
+                            if (resolvedSections.hasOwnProperty(index)) {
+                                const resolvedData = resolvedSections[index];
+                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                
+                                if (resolvedSection) {
+                                    // Clear any default content
+                                    const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                    Array.from(resolvedLines).forEach(line => line.remove());
+                                    
+                                    // Add the stored content with appropriate source class
+                                    resolvedData.content.forEach(line => {
+                                        const lineElement = createCodeElement(line, true, 'resolved');
+                                        
+                                        // Add class based on source
+                                        if (resolvedData.source === 'local') {
+                                            lineElement.classList.add('from-local');
+                                        } else if (resolvedData.source === 'remote') {
+                                            lineElement.classList.add('from-remote');
+                                        } else if (resolvedData.source === 'ai') {
+                                            lineElement.classList.add('from-ai');
+                                        }
+                                        
+                                        resolvedSection.appendChild(lineElement);
+                                    });
+                                    
+                                    // Update bridges to reflect the resolved state
+                                    if (resolvedData.source === 'local' || resolvedData.source === 'remote') {
+                                        updateBridges(parseInt(index), resolvedData.source);
+                                    } else if (resolvedData.source === 'ai') {
+                                        updateBridges(parseInt(index), 'ai');
+                                    }
+                                }
+                            }
+                        }
+                    }
                 </script>
                     </div>
                 </div>
