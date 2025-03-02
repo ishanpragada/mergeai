@@ -20,7 +20,10 @@ export class MergeConflictHandler {
             'mergePanel',
             'Merge Conflict Resolution',
             vscode.ViewColumn.One,
-            { enableScripts: true }
+            { 
+                enableScripts: true,
+                retainContextWhenHidden: true // Keep the webview state when hidden
+            }
         );
 
         panel.webview.html = this.getWebviewContent(panel.webview);
@@ -30,6 +33,16 @@ export class MergeConflictHandler {
             command: 'setContent',
             fullContent: text,
             conflicts: conflicts
+        });
+
+        // Handle visibility changes
+        panel.onDidChangeViewState(e => {
+            if (e.webviewPanel.visible) {
+                // Re-render content when the panel becomes visible again
+                panel.webview.postMessage({
+                    command: 'refreshView'
+                });
+            }
         });
 
         panel.webview.onDidReceiveMessage(async message => {
@@ -92,6 +105,48 @@ export class MergeConflictHandler {
                         box-sizing: border-box;
                     }
 
+                    /* SVG container for bridges */
+                    .bridges-container {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        pointer-events: none; /* Allow clicks to pass through */
+                        z-index: 50; /* Above content but below buttons */
+                    }
+
+                    /* Bridge path styling */
+                    .bridge-path {
+                        fill: none;
+                        stroke-width: 2px;
+                        opacity: 0.7;
+                        transition: opacity 0.3s, stroke-width 0.3s;
+                    }
+
+                    .bridge-path.non-conflict {
+                        stroke: #4b9eda; /* Blue for non-conflicting changes */
+                    }
+
+                    .bridge-path.conflict {
+                        stroke: #e58833; /* Orange for conflicts */
+                        stroke-width: 2.5px;
+                    }
+
+                    .bridge-path.resolved {
+                        stroke: #2ea043; /* Green for resolved conflicts */
+                    }
+
+                    .bridge-path.highlighted {
+                        opacity: 1;
+                        stroke-width: 3px;
+                    }
+
+                    .bridge-path.fading {
+                        opacity: 0;
+                        transition: opacity 0.5s;
+                    }
+
                     .panels-container {
                         display: flex;
                         /* Make sure panels are side by side and do not wrap */
@@ -103,12 +158,23 @@ export class MergeConflictHandler {
                         flex: 1;
 
                         /* Gap between panels */
-                        gap: 20px;
+                        gap: 0px; /* Remove gap as we'll use button columns instead */
                         /* Optional: padding around the container edges */
                         padding: 10px;
                         box-sizing: border-box;
                         position: relative; /* For positioning the between-panel buttons */
                         overflow: hidden; /* Hide overflow */
+                    }
+                    
+                    /* Button columns between panels */
+                    .button-column {
+                        width: 30px; /* Width of the column between panels */
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        position: relative;
+                        z-index: 100;
+                        overflow: visible; /* Allow buttons to be visible */
                     }
                     
                     /* Main scrollable container with vertical scrollbar */
@@ -129,8 +195,8 @@ export class MergeConflictHandler {
                     }
 
                     .panel {
-                        /* Fix each panel to one-third of the container */
-                        width: 33%;
+                        /* Fix each panel to one-third of the container minus button columns */
+                        width: calc(33% - 20px);
                         min-width: 0; /* Important: prevents panel from growing when content is wide */
                         border: 1px solid var(--vscode-panel-border);
                         border-radius: 6px;
@@ -154,7 +220,7 @@ export class MergeConflictHandler {
                         /* This is the scrollable area inside each panel */
                         flex: 1;
                         padding: 0;
-                        
+
                         /* Only allow horizontal scrolling */
                         overflow-y: hidden;
                         overflow-x: auto;
@@ -238,6 +304,12 @@ export class MergeConflictHandler {
                         margin-bottom: 0;
                         padding: 0;
                         border: none;
+                        overflow: visible; /* Ensure buttons outside the container are visible */
+                    }
+                    
+                    /* Make sure the conflict sections have proper positioning context */
+                    .panel-content .code-container .conflict-section {
+                        position: relative;
                     }
 
                     /* Use pseudo-elements to create full-width backgrounds */
@@ -298,7 +370,7 @@ export class MergeConflictHandler {
                         cursor: text;
                         border-left: 2px solid #0366d6;
                     }
-                    
+
                     [contenteditable="true"]:focus {
                         background-color: var(--vscode-editor-selectionBackground, rgba(3, 102, 214, 0.2));
                     }
@@ -316,8 +388,8 @@ export class MergeConflictHandler {
 
                     /* Arrow button styling */
                     .arrow-button {
-                        width: 20px;
-                        height: 20px;
+                        width: 24px;
+                        height: 24px;
                         border-radius: 50%;
                         color: white;
                         border: none;
@@ -331,8 +403,9 @@ export class MergeConflictHandler {
                         transition: transform 0.2s, background-color 0.2s;
                         padding: 0;
                         line-height: 1;
-                        position: absolute;
-                        z-index: 20;
+                        position: fixed; /* Use fixed positioning to keep buttons in place */
+                        z-index: 1000; /* Ensure buttons are above everything */
+                        left: 3px; /* Position in the middle of the button column */
                     }
 
                     .arrow-button:hover {
@@ -341,12 +414,10 @@ export class MergeConflictHandler {
 
                     .arrow-button.left {
                         background: #2ea043;
-                        right: -10px; /* Position at the right edge of the section */
                     }
 
                     .arrow-button.right {
                         background: #f85149;
-                        left: -10px; /* Position at the left edge of the section */
                     }
 
                     .arrow-button.clear {
@@ -355,8 +426,8 @@ export class MergeConflictHandler {
                     
                     /* Individual clear button for each resolved section */
                     .clear-section-button {
-                        width: 16px;
-                        height: 16px;
+                        width: 18px;
+                        height: 18px;
                         border-radius: 50%;
                         background: #6e7681;
                         color: white;
@@ -373,7 +444,7 @@ export class MergeConflictHandler {
                         line-height: 1;
                         position: absolute;
                         right: 5px;
-                        top: 5px;
+                        top: 5px; /* Position at the top */
                         z-index: 20;
                         opacity: 0.7;
                     }
@@ -381,6 +452,27 @@ export class MergeConflictHandler {
                     .clear-section-button:hover {
                         transform: scale(1.1);
                         opacity: 1;
+                    }
+                    
+                    /* Button containers for proper positioning */
+                    .button-container {
+                        position: absolute;
+                        width: 30px;
+                        z-index: 100;
+                    }
+                    
+                    .left-button-container {
+                        right: 0;
+                    }
+                    
+                    .right-button-container {
+                        left: 0;
+                    }
+                    
+                    .clear-button-container {
+                        right: 0;
+                        top: 0;
+                        height: 0;
                     }
 
                     .commit-button {
@@ -403,433 +495,797 @@ export class MergeConflictHandler {
             <body>
                 <div class="scroll-container" id="main-scroll">
                     <div class="scroll-content" id="scroll-content">
+                        <!-- SVG container for bridges -->
+                        <svg class="bridges-container" id="bridges-svg"></svg>
                         <div class="panels-container">
                             <div class="panel">
                                 <div class="panel-header">Local Changes</div>
                                 <div id="local-content" class="panel-content"></div>
                             </div>
+                            <div class="button-column" id="left-buttons-column"></div>
                             <div class="panel">
                                 <div class="panel-header">Resolved Code</div>
                                 <div id="resolved-content" class="panel-content"></div>
                             </div>
+                            <div class="button-column" id="right-buttons-column"></div>
                             <div class="panel">
                                 <div class="panel-header">Remote Changes</div>
                                 <div id="remote-content" class="panel-content"></div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <button id="commit" class="commit-button">Commit Resolution</button>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-typescript.min.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-jsx.min.js"></script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-tsx.min.js"></script>
-                <script>
-                    // Initialize Prism.js manually to prevent automatic highlighting
-                    Prism.manual = true;
-                    
-                    // Ensure Prism.js is loaded
-                    if (!window.Prism) {
-                        console.error('Prism.js not loaded!');
-                    }
-                    
-                    const vscode = acquireVsCodeApi();
-                    let currentConflict = 0;
-                    let conflicts = [];
-                    let fileContent = '';
-
-                    function createCodeElement(text, isConflict = false, type = '') {
-                        const div = document.createElement('div');
-                        div.className = 'code-line' + (isConflict ? ' conflict-' + type : '');
-                        
-                        // For resolved sections, make the content editable
-                        if (type === 'resolved') {
-                            div.contentEditable = 'true';
-                            div.spellcheck = false;
-                            div.dataset.originalText = text; // Store original text for reference
-                        }
-                        
-                        // Apply syntax highlighting with Prism.js
-                        if (text) {
-                            try {
-                                // Determine language based on file extension
-                                const fileExt = getFileExtension(fileContent);
-                                let language = 'typescript'; // Default to typescript
-                                
-                                if (fileExt === 'js') language = 'javascript';
-                                else if (fileExt === 'jsx') language = 'jsx';
-                                else if (fileExt === 'tsx') language = 'tsx';
-                                
-                                // Use Prism for syntax highlighting
-                                const highlighted = Prism.highlight(text, Prism.languages[language], language);
-                                div.innerHTML = highlighted;
-                            } catch (e) {
-                                // Fallback if Prism.js fails
-                                console.error('Syntax highlighting error:', e);
-                                div.textContent = text;
+                        <button id="commit" class="commit-button">Commit Resolution</button>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-typescript.min.js"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-jsx.min.js"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-tsx.min.js"></script>
+                        <script>
+                            // Initialize Prism.js manually to prevent automatic highlighting
+                            Prism.manual = true;
+                            
+                            // Ensure Prism.js is loaded
+                            if (!window.Prism) {
+                                console.error('Prism.js not loaded!');
                             }
-                        } else {
-                            div.textContent = text;
-                        }
-                        
-                        return div;
-                    }
+                            
+                            const vscode = acquireVsCodeApi();
+                            let currentConflict = 0;
+                            let conflicts = [];
+                            let fileContent = '';
 
-                    function getFileExtension(content) {
-                        // Try to determine file type from content
-                        if (content.includes('import React') || content.includes('from "react"')) {
-                            return content.includes('<') ? 'tsx' : 'ts';
-                        }
-                        return 'ts'; // Default to TypeScript
-                    }
+                            function createCodeElement(text, isConflict = false, type = '') {
+                                const div = document.createElement('div');
+                                div.className = 'code-line' + (isConflict ? ' conflict-' + type : '');
+                                
+                                // For resolved sections, make the content editable
+                                if (type === 'resolved') {
+                                    div.contentEditable = 'true';
+                                    div.spellcheck = false;
+                                    div.dataset.originalText = text; // Store original text for reference
+                                }
+                                
+                                // Apply syntax highlighting with Prism.js
+                                if (text) {
+                                    try {
+                                        // Determine language based on file extension
+                                        const fileExt = getFileExtension(fileContent);
+                                        let language = 'typescript'; // Default to typescript
+                                        
+                                        if (fileExt === 'js') language = 'javascript';
+                                        else if (fileExt === 'jsx') language = 'jsx';
+                                        else if (fileExt === 'tsx') language = 'tsx';
+                                        
+                                        // Use Prism for syntax highlighting
+                                        const highlighted = Prism.highlight(text, Prism.languages[language], language);
+                                        div.innerHTML = highlighted;
+                                    } catch (e) {
+                                        // Fallback if Prism.js fails
+                                        console.error('Syntax highlighting error:', e);
+                                        div.textContent = text;
+                                    }
+                                } else {
+                                div.textContent = text;
+                                }
+                                
+                                return div;
+                            }
 
-                    function renderContent() {
-                        // Clear any existing Prism.js styling
-                        document.querySelectorAll('.prism-code').forEach(el => el.remove());
-                        
-                        const localContent = document.getElementById('local-content');
-                        const resolvedContent = document.getElementById('resolved-content');
-                        const remoteContent = document.getElementById('remote-content');
-                        
-                        localContent.innerHTML = '';
-                        resolvedContent.innerHTML = '';
-                        remoteContent.innerHTML = '';
+                            function getFileExtension(content) {
+                                // Try to determine file type from content
+                                if (content.includes('import React') || content.includes('from "react"')) {
+                                    return content.includes('<') ? 'tsx' : 'ts';
+                                }
+                                return 'ts'; // Default to TypeScript
+                            }
 
-                        // Create line number containers and code containers for each panel
-                        const localLineNumbers = document.createElement('div');
-                        localLineNumbers.className = 'line-numbers';
-                        const localCodeContainer = document.createElement('div');
-                        localCodeContainer.className = 'code-container';
-                        localContent.appendChild(localLineNumbers);
-                        localContent.appendChild(localCodeContainer);
+                            function renderContent() {
+                                // Clear any existing Prism.js styling
+                                document.querySelectorAll('.prism-code').forEach(el => el.remove());
+                                
+                                const localContent = document.getElementById('local-content');
+                                const resolvedContent = document.getElementById('resolved-content');
+                                const remoteContent = document.getElementById('remote-content');
+                                const leftButtonsColumn = document.getElementById('left-buttons-column');
+                                const rightButtonsColumn = document.getElementById('right-buttons-column');
+                                
+                                localContent.innerHTML = '';
+                                resolvedContent.innerHTML = '';
+                                remoteContent.innerHTML = '';
+                                leftButtonsColumn.innerHTML = '';
+                                rightButtonsColumn.innerHTML = '';
 
-                        const resolvedLineNumbers = document.createElement('div');
-                        resolvedLineNumbers.className = 'line-numbers';
-                        const resolvedCodeContainer = document.createElement('div');
-                        resolvedCodeContainer.className = 'code-container';
-                        resolvedContent.appendChild(resolvedLineNumbers);
-                        resolvedContent.appendChild(resolvedCodeContainer);
+                                // Clear existing bridges
+                                document.getElementById('bridges-svg').innerHTML = '';
 
-                        const remoteLineNumbers = document.createElement('div');
-                        remoteLineNumbers.className = 'line-numbers';
-                        const remoteCodeContainer = document.createElement('div');
-                        remoteCodeContainer.className = 'code-container';
-                        remoteContent.appendChild(remoteLineNumbers);
-                        remoteContent.appendChild(remoteCodeContainer);
+                                // Create line number containers and code containers for each panel
+                                const localLineNumbers = document.createElement('div');
+                                localLineNumbers.className = 'line-numbers';
+                                const localCodeContainer = document.createElement('div');
+                                localCodeContainer.className = 'code-container';
+                                localContent.appendChild(localLineNumbers);
+                                localContent.appendChild(localCodeContainer);
 
-                        // Remove any existing between-panel buttons containers
-                        document.querySelectorAll('.between-panel-buttons').forEach(el => el.remove());
+                                const resolvedLineNumbers = document.createElement('div');
+                                resolvedLineNumbers.className = 'line-numbers';
+                                const resolvedCodeContainer = document.createElement('div');
+                                resolvedCodeContainer.className = 'code-container';
+                                resolvedContent.appendChild(resolvedLineNumbers);
+                                resolvedContent.appendChild(resolvedCodeContainer);
 
-                        let lastPos = 0;
-                        let lineNumber = 1;
-                        
-                        conflicts.forEach((conflict, index) => {
-                            // Add non-conflict code before this conflict
-                            const beforeText = fileContent.substring(lastPos, conflict.start);
-                            if (beforeText) {
-                                const lines = beforeText.split('\\n');
+                                const remoteLineNumbers = document.createElement('div');
+                                remoteLineNumbers.className = 'line-numbers';
+                                const remoteCodeContainer = document.createElement('div');
+                                remoteCodeContainer.className = 'code-container';
+                                remoteContent.appendChild(remoteLineNumbers);
+                                remoteContent.appendChild(remoteCodeContainer);
+
+                                // Remove any existing between-panel buttons containers
+                                document.querySelectorAll('.between-panel-buttons').forEach(el => el.remove());
+
+                                let lastPos = 0;
+                                let lineNumber = 1;
+                                
+                                conflicts.forEach((conflict, index) => {
+                                    // Add non-conflict code before this conflict
+                                    const beforeText = fileContent.substring(lastPos, conflict.start);
+                                    if (beforeText) {
+                                        const lines = beforeText.split('\\n');
+                                        lines.forEach(line => {
+                                            // Add line numbers
+                                            const localLineNum = document.createElement('div');
+                                            localLineNum.textContent = lineNumber;
+                                            localLineNumbers.appendChild(localLineNum);
+                                            
+                                            const resolvedLineNum = document.createElement('div');
+                                            resolvedLineNum.textContent = lineNumber;
+                                            resolvedLineNumbers.appendChild(resolvedLineNum);
+                                            
+                                            const remoteLineNum = document.createElement('div');
+                                            remoteLineNum.textContent = lineNumber;
+                                            remoteLineNumbers.appendChild(remoteLineNum);
+                                            
+                                            // Add code lines
+                                            localCodeContainer.appendChild(createCodeElement(line));
+                                            resolvedCodeContainer.appendChild(createCodeElement(line));
+                                            remoteCodeContainer.appendChild(createCodeElement(line));
+                                            
+                                            lineNumber++;
+                                        });
+                                    }
+
+                                    // Create conflict section containers
+                                    const localSection = document.createElement('div');
+                                    localSection.className = 'conflict-section';
+                                    localSection.dataset.conflictIndex = index.toString();
+                                    
+                                    const remoteSection = document.createElement('div');
+                                    remoteSection.className = 'conflict-section';
+                                    remoteSection.dataset.conflictIndex = index.toString();
+                                    
+                                    const resolvedSection = document.createElement('div');
+                                    resolvedSection.className = 'conflict-section';
+                                    resolvedSection.dataset.conflictIndex = index.toString();
+                                    resolvedSection.id = \`resolved-section-\${index}\`;
+                                    
+                                    // Add clear button for this specific resolved section
+                                    const clearSectionButton = document.createElement('button');
+                                    clearSectionButton.className = 'clear-section-button';
+                                    clearSectionButton.textContent = 'X';
+                                    clearSectionButton.title = 'Clear this section';
+                                    clearSectionButton.onclick = (e) => {
+                                        e.stopPropagation(); // Prevent triggering section click
+                                        window.clearResolvedSection(index);
+                                    };
+                                    
+                                    // Create a container for the clear button to ensure proper positioning
+                                    const clearButtonContainer = document.createElement('div');
+                                    clearButtonContainer.className = 'button-container clear-button-container';
+                                    clearButtonContainer.appendChild(clearSectionButton);
+                                    resolvedSection.appendChild(clearButtonContainer);
+
+                                    // Add conflict code
+                                    const localLines = conflict.local.split('\\n');
+                                    const remoteLines = conflict.remote.split('\\n');
+                                    const maxLines = Math.max(localLines.length, remoteLines.length);
+
+                                    // Add the conflict lines to their respective sections
+                                    for (let i = 0; i < maxLines; i++) {
+                                        const localLine = localLines[i] || '';
+                                        const remoteLine = remoteLines[i] || '';
+                                        
+                                        // Add line numbers for conflict sections
+                                        const localLineNum = document.createElement('div');
+                                        localLineNum.textContent = lineNumber;
+                                        localLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
+                                        localLineNumbers.appendChild(localLineNum);
+                                        
+                                        const resolvedLineNum = document.createElement('div');
+                                        resolvedLineNum.textContent = lineNumber;
+                                        resolvedLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
+                                        resolvedLineNumbers.appendChild(resolvedLineNum);
+                                        
+                                        const remoteLineNum = document.createElement('div');
+                                        remoteLineNum.textContent = lineNumber;
+                                        remoteLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
+                                        remoteLineNumbers.appendChild(remoteLineNum);
+                                        
+                                        localSection.appendChild(createCodeElement(localLine, true, 'local'));
+                                        remoteSection.appendChild(createCodeElement(remoteLine, true, 'remote'));
+                                        resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
+                                        
+                                        lineNumber++;
+                                    }
+
+                                    // Append sections to their respective panels
+                                    localCodeContainer.appendChild(localSection);
+                                    remoteCodeContainer.appendChild(remoteSection);
+                                    resolvedCodeContainer.appendChild(resolvedSection);
+
+                                    // Create arrow buttons for this conflict
+                                    // Left arrow (local to resolved) - placed in the left button column
+                                    const leftArrow = document.createElement('button');
+                                    leftArrow.className = 'arrow-button left';
+                                    leftArrow.textContent = '→';
+                                    leftArrow.title = 'Accept local changes';
+                                    leftArrow.onclick = () => window.acceptChange(index, 'local');
+                                    leftArrow.dataset.conflictIndex = index.toString();
+                                    
+                                    // Right arrow (remote to resolved) - placed in the right button column
+                                    const rightArrow = document.createElement('button');
+                                    rightArrow.className = 'arrow-button right';
+                                    rightArrow.textContent = '←';
+                                    rightArrow.title = 'Accept remote changes';
+                                    rightArrow.onclick = () => window.acceptChange(index, 'remote');
+                                    rightArrow.dataset.conflictIndex = index.toString();
+                                    
+                                    // Add click handlers to update current conflict index
+                                    localSection.addEventListener('click', () => {
+                                        currentConflict = index;
+                                    });
+                                    
+                                    remoteSection.addEventListener('click', () => {
+                                        currentConflict = index;
+                                    });
+                                    
+                                    resolvedSection.addEventListener('click', () => {
+                                        currentConflict = index;
+                                    });
+
+                                    // Add hover effects for highlighting bridges
+                                    localSection.addEventListener('mouseenter', () => {
+                                        highlightBridges(index);
+                                    });
+                                    localSection.addEventListener('mouseleave', () => {
+                                        unhighlightBridges();
+                                    });
+                                    
+                                    remoteSection.addEventListener('mouseenter', () => {
+                                        highlightBridges(index);
+                                    });
+                                    remoteSection.addEventListener('mouseleave', () => {
+                                        unhighlightBridges();
+                                    });
+                                    
+                                    resolvedSection.addEventListener('mouseenter', () => {
+                                        highlightBridges(index);
+                                    });
+                                    resolvedSection.addEventListener('mouseleave', () => {
+                                        unhighlightBridges();
+                                    });
+
+                                    lastPos = conflict.end;
+                                });
+
+                                // Add remaining non-conflict code
+                                const remainingText = fileContent.substring(lastPos);
+                                if (remainingText) {
+                                    const lines = remainingText.split('\\n');
+                                    lines.forEach(line => {
+                                        // Add line numbers
+                                        const localLineNum = document.createElement('div');
+                                        localLineNum.textContent = lineNumber;
+                                        localLineNumbers.appendChild(localLineNum);
+                                        
+                                        const resolvedLineNum = document.createElement('div');
+                                        resolvedLineNum.textContent = lineNumber;
+                                        resolvedLineNumbers.appendChild(resolvedLineNum);
+                                        
+                                        const remoteLineNum = document.createElement('div');
+                                        remoteLineNum.textContent = lineNumber;
+                                        remoteLineNumbers.appendChild(remoteLineNum);
+                                        
+                                        // Add code lines
+                                        localCodeContainer.appendChild(createCodeElement(line));
+                                        resolvedCodeContainer.appendChild(createCodeElement(line));
+                                        remoteCodeContainer.appendChild(createCodeElement(line));
+                                        
+                                        lineNumber++;
+                                    });
+                                }
+
+                                // After all content is rendered, draw the bridges
+                                setTimeout(() => {
+                                    drawBridges();
+                                }, 200);
+                            }
+
+                            function acceptChange(index, source) {
+                                const conflict = conflicts[index];
+                                const lines = source === 'local' ? conflict.local.split('\\n') : conflict.remote.split('\\n');
+                                
+                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                if (!resolvedSection) return;
+                                
+                                // Clear previous content
+                                const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                Array.from(resolvedLines).forEach(line => line.remove());
+                                
+                                // Add new content with appropriate source class
                                 lines.forEach(line => {
-                                    // Add line numbers
-                                    const localLineNum = document.createElement('div');
-                                    localLineNum.textContent = lineNumber;
-                                    localLineNumbers.appendChild(localLineNum);
+                                    const lineElement = createCodeElement(line, true, 'resolved');
+                                    // Add class based on source
+                                    lineElement.classList.add(source === 'local' ? 'from-local' : 'from-remote');
+                                    resolvedSection.appendChild(lineElement);
+                                });
+                                
+                                // Make sure buttons stay in place after accepting changes
+                                setTimeout(() => {
+                                    const localSection = document.querySelector(\`#local-content .conflict-section[data-conflict-index="\${index}"]\`);
+                                    const remoteSection = document.querySelector(\`#remote-content .conflict-section[data-conflict-index="\${index}"]\`);
                                     
-                                    const resolvedLineNum = document.createElement('div');
-                                    resolvedLineNum.textContent = lineNumber;
-                                    resolvedLineNumbers.appendChild(resolvedLineNum);
+                                    if (localSection) {
+                                        const rect = localSection.getBoundingClientRect();
+                                        const leftArrow = document.getElementById(\`left-arrow-\${index}\`);
+                                        if (leftArrow) {
+                                            leftArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        }
+                                    }
                                     
-                                    const remoteLineNum = document.createElement('div');
-                                    remoteLineNum.textContent = lineNumber;
-                                    remoteLineNumbers.appendChild(remoteLineNum);
+                                    if (remoteSection) {
+                                        const rect = remoteSection.getBoundingClientRect();
+                                        const rightArrow = document.getElementById(\`right-arrow-\${index}\`);
+                                        if (rightArrow) {
+                                            rightArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        }
+                                    }
                                     
-                                    // Add code lines
-                                    localCodeContainer.appendChild(createCodeElement(line));
-                                    resolvedCodeContainer.appendChild(createCodeElement(line));
-                                    remoteCodeContainer.appendChild(createCodeElement(line));
+                                    // Update bridges after content changes
+                                    updateBridges(index, source);
+                                }, 10);
+                            }
+
+                            function clearResolvedSection(index) {
+                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                if (!resolvedSection) return;
+                                
+                                // Clear content
+                                const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                Array.from(resolvedLines).forEach(line => {
+                                    // Remove source-specific classes
+                                    line.classList.remove('from-local', 'from-remote');
+                                    line.remove();
+                                });
+                                
+                                // Add empty lines
+                                const conflict = conflicts[index];
+                                const maxLines = Math.max(
+                                    conflict.local.split('\\n').length,
+                                    conflict.remote.split('\\n').length
+                                );
+                                
+                                for (let i = 0; i < maxLines; i++) {
+                                    // Create empty line with default styling (no source class)
+                                    resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
+                                }
+                                
+                                // Reset bridges to conflict state
+                                resetBridges(index);
+                            }
+
+                            // Bridge visualization functions
+                            function drawBridges() {
+                                const svgContainer = document.getElementById('bridges-svg');
+                                svgContainer.innerHTML = ''; // Clear existing bridges
+                                
+                                // Get all conflict sections
+                                const conflictSections = document.querySelectorAll('.conflict-section');
+                                const conflictIndices = new Set();
+                                
+                                // Collect unique conflict indices
+                                conflictSections.forEach(section => {
+                                    if (section.dataset.conflictIndex) {
+                                        conflictIndices.add(section.dataset.conflictIndex);
+                                    }
+                                });
+                                
+                                // Draw bridges for each conflict
+                                conflictIndices.forEach(index => {
+                                    const localSection = document.querySelector(\`#local-content .conflict-section[data-conflict-index="\${index}"]\`);
+                                    const resolvedSection = document.querySelector(\`#resolved-content .conflict-section[data-conflict-index="\${index}"]\`);
+                                    const remoteSection = document.querySelector(\`#remote-content .conflict-section[data-conflict-index="\${index}"]\`);
                                     
-                                    lineNumber++;
+                                    if (localSection && resolvedSection && remoteSection) {
+                                        // Get bounding rectangles
+                                        const localRect = localSection.getBoundingClientRect();
+                                        const resolvedRect = resolvedSection.getBoundingClientRect();
+                                        const remoteRect = remoteSection.getBoundingClientRect();
+                                        
+                                        // Get scroll position
+                                        const scrollTop = document.getElementById('main-scroll').scrollTop;
+                                        
+                                        // Adjust for scroll position
+                                        const localTop = localRect.top + scrollTop;
+                                        const localBottom = localRect.bottom + scrollTop;
+                                        const resolvedTop = resolvedRect.top + scrollTop;
+                                        const resolvedBottom = resolvedRect.bottom + scrollTop;
+                                        const remoteTop = remoteRect.top + scrollTop;
+                                        const remoteBottom = remoteRect.bottom + scrollTop;
+                                        
+                                        // Create paths for bridges
+                                        // Left bridge (local to resolved)
+                                        const leftPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                        leftPath.classList.add('bridge-path', 'conflict');
+                                        leftPath.dataset.conflictIndex = index;
+                                        leftPath.dataset.side = 'left';
+                                        
+                                        // Right bridge (resolved to remote)
+                                        const rightPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                        rightPath.classList.add('bridge-path', 'conflict');
+                                        rightPath.dataset.conflictIndex = index;
+                                        rightPath.dataset.side = 'right';
+                                        
+                                        // Calculate control points for smooth curves
+                                        const leftControlX = (localRect.right + resolvedRect.left) / 2;
+                                        const rightControlX = (resolvedRect.right + remoteRect.left) / 2;
+                                        
+                                        // Create path data for smooth curves
+                                        const leftPathData = \`
+                                            M \${localRect.right} \${localTop + 10}
+                                            C \${leftControlX} \${localTop + 10}, \${leftControlX} \${resolvedTop + 10}, \${resolvedRect.left} \${resolvedTop + 10}
+                                            L \${resolvedRect.left} \${resolvedBottom - 10}
+                                            C \${leftControlX} \${resolvedBottom - 10}, \${leftControlX} \${localBottom - 10}, \${localRect.right} \${localBottom - 10}
+                                            Z
+                                        \`;
+                                        
+                                        const rightPathData = \`
+                                            M \${resolvedRect.right} \${resolvedTop + 10}
+                                            C \${rightControlX} \${resolvedTop + 10}, \${rightControlX} \${remoteTop + 10}, \${remoteRect.left} \${remoteTop + 10}
+                                            L \${remoteRect.left} \${remoteBottom - 10}
+                                            C \${rightControlX} \${remoteBottom - 10}, \${rightControlX} \${resolvedBottom - 10}, \${resolvedRect.right} \${resolvedBottom - 10}
+                                            Z
+                                        \`;
+                                        
+                                        leftPath.setAttribute('d', leftPathData);
+                                        rightPath.setAttribute('d', rightPathData);
+                                        
+                                        // Check if this conflict is resolved
+                                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                        const isResolved = Array.from(resolvedLines).some(line => 
+                                            line.classList.contains('from-local') || line.classList.contains('from-remote')
+                                        );
+                                        
+                                        if (isResolved) {
+                                            // Check which side was accepted
+                                            const fromLocal = Array.from(resolvedLines).some(line => 
+                                                line.classList.contains('from-local')
+                                            );
+                                            
+                                            if (fromLocal) {
+                                                leftPath.classList.remove('conflict');
+                                                leftPath.classList.add('resolved');
+                                                rightPath.classList.add('fading');
+                                            } else {
+                                                rightPath.classList.remove('conflict');
+                                                rightPath.classList.add('resolved');
+                                                leftPath.classList.add('fading');
+                                            }
+                                        }
+                                        
+                                        // Add paths to SVG
+                                        svgContainer.appendChild(leftPath);
+                                        svgContainer.appendChild(rightPath);
+                                    }
+                                });
+                            }
+                            
+                            function updateBridges(index, source) {
+                                // Update bridge visualization when a conflict is resolved
+                                const leftBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="left"]\`);
+                                const rightBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="right"]\`);
+                                
+                                if (leftBridge && rightBridge) {
+                                    if (source === 'local') {
+                                        // Local was accepted
+                                        leftBridge.classList.remove('conflict');
+                                        leftBridge.classList.add('resolved');
+                                        rightBridge.classList.add('fading');
+                                    } else {
+                                        // Remote was accepted
+                                        rightBridge.classList.remove('conflict');
+                                        rightBridge.classList.add('resolved');
+                                        leftBridge.classList.add('fading');
+                                    }
+                                }
+                            }
+                            
+                            function resetBridges(index) {
+                                // Reset bridges to conflict state when a resolved section is cleared
+                                const leftBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="left"]\`);
+                                const rightBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="right"]\`);
+                                
+                                if (leftBridge && rightBridge) {
+                                    leftBridge.classList.remove('resolved', 'fading');
+                                    rightBridge.classList.remove('resolved', 'fading');
+                                    leftBridge.classList.add('conflict');
+                                    rightBridge.classList.add('conflict');
+                                }
+                            }
+                            
+                            function highlightBridges(index) {
+                                // Highlight bridges on hover
+                                const bridges = document.querySelectorAll(\`.bridge-path[data-conflict-index="\${index}"]\`);
+                                bridges.forEach(bridge => {
+                                    if (!bridge.classList.contains('fading')) {
+                                        bridge.classList.add('highlighted');
+                                    }
+                                });
+                            }
+                            
+                            function unhighlightBridges() {
+                                // Remove highlight from all bridges
+                                document.querySelectorAll('.bridge-path.highlighted').forEach(bridge => {
+                                    bridge.classList.remove('highlighted');
                                 });
                             }
 
-                            // Create conflict section containers
-                            const localSection = document.createElement('div');
-                            localSection.className = 'conflict-section';
-                            localSection.dataset.conflictIndex = index.toString();
-                            
-                            const remoteSection = document.createElement('div');
-                            remoteSection.className = 'conflict-section';
-                            remoteSection.dataset.conflictIndex = index.toString();
-                            
-                            const resolvedSection = document.createElement('div');
-                            resolvedSection.className = 'conflict-section';
-                            resolvedSection.dataset.conflictIndex = index.toString();
-                            resolvedSection.id = \`resolved-section-\${index}\`;
-                            
-                            // Add clear button for this specific resolved section
-                            const clearSectionButton = document.createElement('button');
-                            clearSectionButton.className = 'clear-section-button';
-                            clearSectionButton.textContent = 'X';
-                            clearSectionButton.title = 'Clear this section';
-                            clearSectionButton.onclick = (e) => {
-                                e.stopPropagation(); // Prevent triggering section click
-                                window.clearResolvedSection(index);
-                            };
-                            resolvedSection.appendChild(clearSectionButton);
-
-                            // Add conflict code
-                            const localLines = conflict.local.split('\\n');
-                            const remoteLines = conflict.remote.split('\\n');
-                            const maxLines = Math.max(localLines.length, remoteLines.length);
-
-                            // Add the conflict lines to their respective sections
-                            for (let i = 0; i < maxLines; i++) {
-                                const localLine = localLines[i] || '';
-                                const remoteLine = remoteLines[i] || '';
+                            // Improved scroll synchronization for all panels
+                            function setupScrollSync() {
+                                const panels = document.querySelectorAll('.panel-content');
+                                const mainScroll = document.getElementById('main-scroll');
+                                const scrollContent = document.getElementById('scroll-content');
+                                const leftButtonsColumn = document.getElementById('left-buttons-column');
+                                const rightButtonsColumn = document.getElementById('right-buttons-column');
                                 
-                                // Add line numbers for conflict sections
-                                const localLineNum = document.createElement('div');
-                                localLineNum.textContent = lineNumber;
-                                localLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
-                                localLineNumbers.appendChild(localLineNum);
+                                // Function to update the height of the scroll content
+                                function updateScrollHeight() {
+                                    // Find the maximum height among all panels
+                                    const maxHeight = Math.max(...Array.from(panels).map(panel => {
+                                        const content = panel.querySelector('.code-container');
+                                        return content ? content.scrollHeight : 0;
+                                    }));
+                                    
+                                    // Set the height of the scroll content
+                                    scrollContent.style.height = (maxHeight + 100) + 'px';
+                                }
                                 
-                                const resolvedLineNum = document.createElement('div');
-                                resolvedLineNum.textContent = lineNumber;
-                                resolvedLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
-                                resolvedLineNumbers.appendChild(resolvedLineNum);
-                                
-                                const remoteLineNum = document.createElement('div');
-                                remoteLineNum.textContent = lineNumber;
-                                remoteLineNum.style.color = 'var(--vscode-editorLineNumber-activeForeground)';
-                                remoteLineNumbers.appendChild(remoteLineNum);
-                                
-                                localSection.appendChild(createCodeElement(localLine, true, 'local'));
-                                remoteSection.appendChild(createCodeElement(remoteLine, true, 'remote'));
-                                resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
-                                
-                                lineNumber++;
-                            }
-
-                            // Create arrow buttons for this conflict
-                            // Left arrow (local to resolved) - attached directly to the local section
-                            const leftArrow = document.createElement('button');
-                            leftArrow.className = 'arrow-button left';
-                            leftArrow.textContent = '→';
-                            leftArrow.title = 'Accept local changes';
-                            leftArrow.onclick = () => window.acceptChange(index, 'local');
-                            localSection.appendChild(leftArrow);
-
-                            // Right arrow (remote to resolved) - attached directly to the remote section
-                            const rightArrow = document.createElement('button');
-                            rightArrow.className = 'arrow-button right';
-                            rightArrow.textContent = '←';
-                            rightArrow.title = 'Accept remote changes';
-                            rightArrow.onclick = () => window.acceptChange(index, 'remote');
-                            remoteSection.appendChild(rightArrow);
-
-                            // Add click handlers to update current conflict index
-                            localSection.addEventListener('click', () => {
-                                currentConflict = index;
-                            });
-                            
-                            remoteSection.addEventListener('click', () => {
-                                currentConflict = index;
-                            });
-                            
-                            resolvedSection.addEventListener('click', () => {
-                                currentConflict = index;
-                            });
-
-                            // Append sections to their respective panels
-                            localCodeContainer.appendChild(localSection);
-                            remoteCodeContainer.appendChild(remoteSection);
-                            resolvedCodeContainer.appendChild(resolvedSection);
-
-                            lastPos = conflict.end;
-                        });
-
-                        // Add remaining non-conflict code
-                        const remainingText = fileContent.substring(lastPos);
-                        if (remainingText) {
-                            const lines = remainingText.split('\\n');
-                            lines.forEach(line => {
-                                // Add line numbers
-                                const localLineNum = document.createElement('div');
-                                localLineNum.textContent = lineNumber;
-                                localLineNumbers.appendChild(localLineNum);
-                                
-                                const resolvedLineNum = document.createElement('div');
-                                resolvedLineNum.textContent = lineNumber;
-                                resolvedLineNumbers.appendChild(resolvedLineNum);
-                                
-                                const remoteLineNum = document.createElement('div');
-                                remoteLineNum.textContent = lineNumber;
-                                remoteLineNumbers.appendChild(remoteLineNum);
-                                
-                                // Add code lines
-                                localCodeContainer.appendChild(createCodeElement(line));
-                                resolvedCodeContainer.appendChild(createCodeElement(line));
-                                remoteCodeContainer.appendChild(createCodeElement(line));
-                                
-                                lineNumber++;
-                            });
-                        }
-                    }
-
-                    function acceptChange(index, source) {
-                        const conflict = conflicts[index];
-                        const lines = source === 'local' ? conflict.local.split('\\n') : conflict.remote.split('\\n');
-                        
-                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
-                        if (!resolvedSection) return;
-                        
-                        // Clear previous content
-                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
-                        Array.from(resolvedLines).forEach(line => line.remove());
-                        
-                        // Add new content with appropriate source class
-                        lines.forEach(line => {
-                            const lineElement = createCodeElement(line, true, 'resolved');
-                            // Add class based on source
-                            lineElement.classList.add(source === 'local' ? 'from-local' : 'from-remote');
-                            resolvedSection.appendChild(lineElement);
-                        });
-                    }
-
-                    function clearResolvedSection(index) {
-                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
-                        if (!resolvedSection) return;
-                        
-                        // Clear content
-                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
-                        Array.from(resolvedLines).forEach(line => {
-                            // Remove source-specific classes
-                            line.classList.remove('from-local', 'from-remote');
-                            line.remove();
-                        });
-                        
-                        // Add empty lines
-                        const conflict = conflicts[index];
-                        const maxLines = Math.max(
-                            conflict.local.split('\\n').length,
-                            conflict.remote.split('\\n').length
-                        );
-                        
-                        for (let i = 0; i < maxLines; i++) {
-                            // Create empty line with default styling (no source class)
-                            resolvedSection.appendChild(createCodeElement('', true, 'resolved'));
-                        }
-                    }
-
-                    // Make functions available to the window object so they can be called from HTML
-                    window.acceptChange = acceptChange;
-                    window.clearResolvedSection = clearResolvedSection;
-
-                    // Improved scroll synchronization for all panels
-                    function setupScrollSync() {
-                        const panels = document.querySelectorAll('.panel-content');
-                        const mainScroll = document.getElementById('main-scroll');
-                        const scrollContent = document.getElementById('scroll-content');
-                        
-                        // Function to update the height of the scroll content
-                        function updateScrollHeight() {
-                            // Find the maximum height among all panels
-                            const maxHeight = Math.max(...Array.from(panels).map(panel => {
-                                const content = panel.querySelector('.code-container');
-                                return content ? content.scrollHeight : 0;
-                            }));
-                            
-                            // Set the height of the scroll content
-                            scrollContent.style.height = (maxHeight + 100) + 'px';
-                        }
-                        
-                        // Function to sync panel positions with main scroll
-                        function syncPanelsToScroll() {
-                            const scrollTop = mainScroll.scrollTop;
-                            
-                            // Update all panels' scroll position
-                            panels.forEach(panel => {
-                                panel.scrollTop = scrollTop;
-                            });
-                        }
-                        
-                        // Listen for scroll events on the main scroll container
-                        mainScroll.addEventListener('scroll', syncPanelsToScroll, { passive: true });
-                        
-                        // Update the scroll height when content changes
-                        const observer = new MutationObserver(updateScrollHeight);
-                        panels.forEach(panel => {
-                            observer.observe(panel, { childList: true, subtree: true });
-                        });
-                        
-                        // Initial height update
-                        setTimeout(updateScrollHeight, 100);
-                        
-                        // Update height on window resize
-                        window.addEventListener('resize', updateScrollHeight);
-                    }
-                    
-                    // Set up scroll synchronization after content is rendered
-                    window.addEventListener('message', event => {
-                        const message = event.data;
-                        if (message.command === 'setContent') {
-                            conflicts = message.conflicts;
-                            fileContent = message.fullContent;
-                            renderContent();
-                            
-                            // Set up scroll sync after content is rendered
-                            setTimeout(setupScrollSync, 100);
-                        }
-                    });
-
-                    document.getElementById('commit').addEventListener('click', () => {
-                        // Check if all conflicts have been resolved
-                        const unresolvedSections = Array.from(document.querySelectorAll('.conflict-section'))
-                            .filter(section => {
-                                const index = section.dataset.conflictIndex;
-                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
-                                if (!resolvedSection) return false;
-                                
-                                const lines = resolvedSection.querySelectorAll('.conflict-resolved');
-                                return Array.from(lines).every(line => !line.textContent.trim());
-                            });
-                            
-                        if (unresolvedSections.length > 0) {
-                            vscode.postMessage({ 
-                                command: 'showError', 
-                                message: 'Please resolve all conflicts before committing.'
-                            });
-                            return;
-                        }
-                        
-                        // Collect all content including resolved conflicts
-                        const resolvedContent = document.getElementById('resolved-content');
-                        const allLines = [];
-                        
-                        // Process non-conflict lines and resolved conflict sections
-                        const codeContainer = resolvedContent.querySelector('.code-container');
-                        if (codeContainer) {
-                            Array.from(codeContainer.childNodes).forEach(node => {
-                                if (node.classList && node.classList.contains('conflict-section')) {
-                                    // Get resolved lines from conflict section
-                                    const lines = node.querySelectorAll('.conflict-resolved');
-                                    Array.from(lines).forEach(line => {
-                                        // Get the actual text content, not the HTML with syntax highlighting
-                                        allLines.push(line.textContent);
+                                // Function to sync panel positions with main scroll
+                                function syncPanelsToScroll() {
+                                    const scrollTop = mainScroll.scrollTop;
+                                    
+                                    // Update all panels' scroll position
+                                    panels.forEach(panel => {
+                                        panel.scrollTop = scrollTop;
                                     });
-                                } else if (node.classList && node.classList.contains('code-line')) {
-                                    // Regular non-conflict line
-                                    allLines.push(node.textContent);
+                                    
+                                    // Redraw bridges when scrolling
+                                    requestAnimationFrame(drawBridges);
+                                }
+                                
+                                // Listen for scroll events on the main scroll container
+                                mainScroll.addEventListener('scroll', syncPanelsToScroll, { passive: true });
+                                
+                                // Update the scroll height when content changes
+                                const observer = new MutationObserver(() => {
+                                    updateScrollHeight();
+                                    // Only position buttons initially, not on every content change
+                                    if (!window.buttonsPositioned) {
+                                        positionButtons();
+                                        window.buttonsPositioned = true;
+                                    }
+                                    // Redraw bridges when content changes
+                                    requestAnimationFrame(drawBridges);
+                                });
+                                
+                                panels.forEach(panel => {
+                                    observer.observe(panel, { childList: true, subtree: true });
+                                });
+
+                                // Position buttons correctly based on conflict sections
+                                function positionButtons() {
+                                    // Clear existing buttons
+                                    leftButtonsColumn.innerHTML = '';
+                                    rightButtonsColumn.innerHTML = '';
+                                    
+                                    // Get all conflict sections
+                                    const localSections = document.querySelectorAll('#local-content .conflict-section');
+                                    const remoteSections = document.querySelectorAll('#remote-content .conflict-section');
+                                    
+                                    // Calculate column positions
+                                    const leftColumnRect = leftButtonsColumn.getBoundingClientRect();
+                                    const rightColumnRect = rightButtonsColumn.getBoundingClientRect();
+                                    
+                                    // Position buttons for each conflict section
+                                    localSections.forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        const rect = section.getBoundingClientRect();
+                                        
+                                        // Create left arrow button with fixed positioning
+                                        const leftArrow = document.createElement('button');
+                                        leftArrow.className = 'arrow-button left';
+                                        leftArrow.id = \`left-arrow-\${index}\`;
+                                        leftArrow.textContent = '→';
+                                        leftArrow.title = 'Accept local changes';
+                                        
+                                        // Use a wrapper function to preserve the index value
+                                        leftArrow.onclick = (function(idx) {
+                                            return function() {
+                                                window.acceptChange(idx, 'local');
+                                            };
+                                        })(index);
+                                        
+                                        // Position relative to viewport
+                                        leftArrow.style.left = (leftColumnRect.left + leftColumnRect.width/2 - 12) + 'px';
+                                        leftArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        leftArrow.style.transform = 'translateY(-50%)';
+                                        
+                                        document.body.appendChild(leftArrow);
+                                    });
+                                    
+                                    remoteSections.forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        const rect = section.getBoundingClientRect();
+                                        
+                                        // Create right arrow button with fixed positioning
+                                        const rightArrow = document.createElement('button');
+                                        rightArrow.className = 'arrow-button right';
+                                        rightArrow.id = \`right-arrow-\${index}\`;
+                                        rightArrow.textContent = '←';
+                                        rightArrow.title = 'Accept remote changes';
+                                        
+                                        // Use a wrapper function to preserve the index value
+                                        rightArrow.onclick = (function(idx) {
+                                            return function() {
+                                                window.acceptChange(idx, 'remote');
+                                            };
+                                        })(index);
+                                        
+                                        // Position relative to viewport
+                                        rightArrow.style.left = (rightColumnRect.left + rightColumnRect.width/2 - 12) + 'px';
+                                        rightArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        rightArrow.style.transform = 'translateY(-50%)';
+                                        
+                                        document.body.appendChild(rightArrow);
+                                    });
+                                }
+                                
+                                // Initial updates
+                                setTimeout(() => {
+                                    updateScrollHeight();
+                                    positionButtons();
+                                    window.buttonsPositioned = true;
+                                }, 100);
+                                
+                                // Update on window resize
+                                window.addEventListener('resize', () => {
+                                    updateScrollHeight();
+                                    // Remove existing buttons and reposition them on resize
+                                    document.querySelectorAll('.arrow-button').forEach(btn => btn.remove());
+                                    window.buttonsPositioned = false;
+                                    positionButtons();
+                                    // Redraw bridges on resize
+                                    requestAnimationFrame(drawBridges);
+                                });
+                                
+                                // Update button positions on scroll
+                                mainScroll.addEventListener('scroll', () => {
+                                    // Update fixed button positions based on their sections
+                                    localSections = document.querySelectorAll('#local-content .conflict-section');
+                                    remoteSections = document.querySelectorAll('#remote-content .conflict-section');
+                                    
+                                    localSections.forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        const rect = section.getBoundingClientRect();
+                                        const leftArrow = document.getElementById(\`left-arrow-\${index}\`);
+                                        if (leftArrow) {
+                                            leftArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        }
+                                    });
+                                    
+                                    remoteSections.forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        const rect = section.getBoundingClientRect();
+                                        const rightArrow = document.getElementById(\`right-arrow-\${index}\`);
+                                        if (rightArrow) {
+                                            rightArrow.style.top = (rect.top + rect.height/2) + 'px';
+                                        }
+                                    });
+                                }, { passive: true });
+                            }
+                            
+                            // Set up scroll synchronization after content is rendered
+                            window.addEventListener('message', event => {
+                                const message = event.data;
+                                if (message.command === 'setContent') {
+                                    conflicts = message.conflicts;
+                                    fileContent = message.fullContent;
+                                    renderContent();
+                                    
+                                    // Set up scroll sync after content is rendered
+                                    setTimeout(setupScrollSync, 100);
+                                } else if (message.command === 'refreshView') {
+                                    // Re-render the view when the panel becomes visible again
+                                    if (conflicts.length > 0 && fileContent) {
+                                        // Clear any existing state
+                                        document.querySelectorAll('.arrow-button').forEach(btn => btn.remove());
+                                        window.buttonsPositioned = false;
+                                        
+                                        // Re-render content
+                                        renderContent();
+                                        
+                                        // Re-setup scroll sync
+                                        setTimeout(() => {
+                                            setupScrollSync();
+                                            // Make sure bridges are drawn
+                                            drawBridges();
+                                        }, 100);
+                                    }
                                 }
                             });
-                        }
-                        
-                        vscode.postMessage({ 
-                            command: 'commitResolution', 
-                            resolvedCode: allLines.join('\\n')
-                        });
-                    });
-                </script>
+
+                            document.getElementById('commit').addEventListener('click', () => {
+                                // Check if all conflicts have been resolved
+                                const unresolvedSections = Array.from(document.querySelectorAll('.conflict-section'))
+                                    .filter(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                        if (!resolvedSection) return false;
+                                        
+                                        const lines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                        return Array.from(lines).every(line => !line.textContent.trim());
+                                    });
+                                    
+                                if (unresolvedSections.length > 0) {
+                                    vscode.postMessage({ 
+                                        command: 'showError', 
+                                        message: 'Please resolve all conflicts before committing.'
+                                    });
+                                    return;
+                                }
+                                
+                                // Collect all content including resolved conflicts
+                                const resolvedContent = document.getElementById('resolved-content');
+                                const allLines = [];
+                                
+                                // Process non-conflict lines and resolved conflict sections
+                                const codeContainer = resolvedContent.querySelector('.code-container');
+                                if (codeContainer) {
+                                    Array.from(codeContainer.childNodes).forEach(node => {
+                                        if (node.classList && node.classList.contains('conflict-section')) {
+                                            // Get resolved lines from conflict section
+                                            const lines = node.querySelectorAll('.conflict-resolved');
+                                            Array.from(lines).forEach(line => {
+                                                // Get the actual text content, not the HTML with syntax highlighting
+                                                allLines.push(line.textContent);
+                                            });
+                                        } else if (node.classList && node.classList.contains('code-line')) {
+                                            // Regular non-conflict line
+                                            allLines.push(node.textContent);
+                                        }
+                                    });
+                                }
+                                
+                                vscode.postMessage({ 
+                                    command: 'commitResolution', 
+                                    resolvedCode: allLines.join('\\n')
+                                });
+                            });
+
+                            // Make functions available to the window object so they can be called from HTML
+                            window.acceptChange = acceptChange;
+                            window.clearResolvedSection = clearResolvedSection;
+                        </script>
+                    </div>
+                </div>
             </body>
             </html>
         `;
