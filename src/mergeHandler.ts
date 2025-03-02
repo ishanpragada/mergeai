@@ -105,6 +105,17 @@ export class MergeConflictHandler {
                         box-sizing: border-box;
                     }
 
+                    /* Fixed overlay for buttons that should not scroll */
+                    #fixed-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        pointer-events: none; /* Allow clicks to pass through by default */
+                        z-index: 2000; /* Above everything else */
+                    }
+
                     /* SVG container for bridges */
                     .bridges-container {
                         position: fixed; /* Keep fixed positioning */
@@ -446,11 +457,10 @@ export class MergeConflictHandler {
                         transition: transform 0.2s, background-color 0.2s;
                         padding: 0;
                         line-height: 1;
-                        position: absolute;
-                        right: 5px;
-                        top: 5px; /* Position at the top */
-                        z-index: 20;
-                        opacity: 0.7;
+                        position: fixed; /* Keep fixed positioning */
+                        z-index: 2001; /* Above the fixed overlay */
+                        opacity: 0.8; /* Slightly more visible */
+                        pointer-events: auto; /* Ensure it can be clicked */
                     }
                     
                     .clear-section-button:hover {
@@ -474,9 +484,13 @@ export class MergeConflictHandler {
                     }
                     
                     .clear-button-container {
-                        right: 0;
+                        position: sticky;
+                        left: 0;
                         top: 0;
-                        height: 0;
+                        z-index: 100;
+                        width: 30px;
+                        height: 30px;
+                        pointer-events: auto;
                     }
 
                     .commit-button {
@@ -497,6 +511,7 @@ export class MergeConflictHandler {
                 </style>
             </head>
             <body>
+                <div id="fixed-overlay"></div>
                 <div class="scroll-container" id="main-scroll">
                     <div class="scroll-content" id="scroll-content">
                         <!-- SVG container for bridges -->
@@ -674,19 +689,27 @@ export class MergeConflictHandler {
                                     // Add clear button for this specific resolved section
                                     const clearSectionButton = document.createElement('button');
                                     clearSectionButton.className = 'clear-section-button';
+                                    clearSectionButton.id = \`clear-button-\${index}\`;
                                     clearSectionButton.textContent = 'X';
                                     clearSectionButton.title = 'Clear this section';
+                                    clearSectionButton.style.pointerEvents = 'auto'; // Make sure it can be clicked
                                     clearSectionButton.onclick = (e) => {
                                         e.stopPropagation(); // Prevent triggering section click
                                         window.clearResolvedSection(index);
                                     };
                                     
-                                    // Create a container for the clear button to ensure proper positioning
-                                    const clearButtonContainer = document.createElement('div');
-                                    clearButtonContainer.className = 'button-container clear-button-container';
-                                    clearButtonContainer.appendChild(clearSectionButton);
-                                    resolvedSection.appendChild(clearButtonContainer);
-
+                                    // Append to the fixed overlay instead of document body
+                                    document.getElementById('fixed-overlay').appendChild(clearSectionButton);
+                                    
+                                    // Store the initial position of the section for the button
+                                    resolvedSection.dataset.initialRight = '0';
+                                    resolvedSection.dataset.initialTop = '0';
+                                    
+                                    // Position the button initially with a slightly longer delay to ensure section is fully rendered
+                                    setTimeout(() => {
+                                        positionClearButtonFixed(index);
+                                    }, 100);
+                                    
                                     // Add conflict code
                                     const localLines = conflict.local.split('\\n');
                                     const remoteLines = conflict.remote.split('\\n');
@@ -859,7 +882,7 @@ export class MergeConflictHandler {
                             }
 
                             function clearResolvedSection(index) {
-                                const resolvedSection = document.getElementById(\`resolved-section-\${index}\`);
+                                const resolvedSection = document.getElementById('resolved-section-' + index);
                                 if (!resolvedSection) return;
                                 
                                 // Clear content
@@ -884,6 +907,11 @@ export class MergeConflictHandler {
                                 
                                 // Reset bridges to conflict state
                                 resetBridges(index);
+                                
+                                // Reposition the clear button
+                                setTimeout(() => {
+                                    positionClearButtonFixed(index);
+                                }, 50);
                             }
 
                             // Bridge visualization functions
@@ -1060,6 +1088,56 @@ export class MergeConflictHandler {
                                 const leftButtonsColumn = document.getElementById('left-buttons-column');
                                 const rightButtonsColumn = document.getElementById('right-buttons-column');
                                 
+                                // Function to position clear buttons
+                                function positionClearButtonFixed(index) {
+                                    const resolvedSection = document.getElementById('resolved-section-' + index);
+                                    const clearButton = document.getElementById('clear-button-' + index);
+                                    const resolvedPanel = document.getElementById('resolved-content');
+                                    
+                                    if (resolvedSection && clearButton && resolvedPanel) {
+                                        const rect = resolvedSection.getBoundingClientRect();
+                                        const panelRect = resolvedPanel.getBoundingClientRect();
+                                        
+                                        // Position at the top right corner of the section relative to the panel
+                                        // This ensures the button stays fixed at the right edge of the panel regardless of horizontal scrolling
+                                        clearButton.style.position = 'fixed';
+                                        
+                                        // Use the right edge of the panel instead of the section's right edge
+                                        // This keeps the button at the right edge of the panel
+                                        clearButton.style.left = (panelRect.right - 23) + 'px';
+                                        clearButton.style.top = (rect.top + 5) + 'px';
+                                        
+                                        // Store the current position for reference
+                                        resolvedSection.dataset.initialRight = panelRect.right;
+                                        resolvedSection.dataset.initialTop = rect.top;
+                                    }
+                                }
+                                
+                                // Original function kept for compatibility
+                                function positionClearButton(index) {
+                                    positionClearButtonFixed(index);
+                                }
+                                
+                                // Add specific listener for the resolved panel's horizontal scroll
+                                const resolvedPanel = document.getElementById('resolved-content');
+                                if (resolvedPanel) {
+                                    resolvedPanel.addEventListener('scroll', () => {
+                                        // Update all clear buttons immediately on horizontal scroll of resolved panel
+                                        document.querySelectorAll('.conflict-section').forEach(section => {
+                                            const index = section.dataset.conflictIndex;
+                                            if (index) {
+                                                // Use requestAnimationFrame for smoother updates
+                                                requestAnimationFrame(() => {
+                                                    positionClearButtonFixed(index);
+                                                });
+                                            }
+                                        });
+                                        
+                                        // Also redraw bridges when horizontally scrolling
+                                        requestAnimationFrame(drawBridges);
+                                    }, { passive: true });
+                                }
+                                
                                 // Function to update the height of the scroll content
                                 function updateScrollHeight() {
                                     // Find the maximum height among all panels
@@ -1083,6 +1161,14 @@ export class MergeConflictHandler {
                                     
                                     // Redraw bridges on scroll to ensure they stay in the correct position
                                     requestAnimationFrame(drawBridges);
+                                    
+                                    // Update all clear buttons
+                                    document.querySelectorAll('.conflict-section').forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        if (index) {
+                                            positionClearButton(index);
+                                        }
+                                    });
                                 }
                                 
                                 // Listen for scroll events on the main scroll container
@@ -1093,6 +1179,14 @@ export class MergeConflictHandler {
                                     panel.addEventListener('scroll', () => {
                                         // Redraw bridges when any panel is horizontally scrolled
                                         requestAnimationFrame(drawBridges);
+                                        
+                                        // Update all clear buttons immediately without delay
+                                        document.querySelectorAll('.conflict-section').forEach(section => {
+                                            const index = section.dataset.conflictIndex;
+                                            if (index) {
+                                                positionClearButtonFixed(index);
+                                            }
+                                        });
                                     }, { passive: true });
                                 });
                                 
@@ -1106,6 +1200,16 @@ export class MergeConflictHandler {
                                     }
                                     // Redraw bridges when content changes
                                     setTimeout(drawBridges, 100);
+                                    
+                                    // Update clear button positions
+                                    document.querySelectorAll('.conflict-section').forEach(section => {
+                                        const index = section.dataset.conflictIndex;
+                                        if (index) {
+                                            setTimeout(() => {
+                                                positionClearButtonFixed(index);
+                                            }, 100);
+                                        }
+                                    });
                                 });
                                 
                                 panels.forEach(panel => {
@@ -1201,6 +1305,16 @@ export class MergeConflictHandler {
                                     positionButtons();
                                     // Redraw bridges on resize
                                     setTimeout(drawBridges, 100);
+                                    
+                                    // Update clear button positions with a slight delay to ensure panels are properly resized
+                                    setTimeout(() => {
+                                        document.querySelectorAll('.conflict-section').forEach(section => {
+                                            const index = section.dataset.conflictIndex;
+                                            if (index) {
+                                                positionClearButtonFixed(index);
+                                            }
+                                        });
+                                    }, 200);
                                 });
                                 
                                 // Update button positions on scroll
