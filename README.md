@@ -13,14 +13,6 @@ MRGR is a **VS Code extension** designed to **simplify merge conflict resolution
 - **Seamless Integration with VS Code** – Resolve conflicts directly inside your editor.
 - **Commit Merges Instantly** – Finalize and save your resolutions with a single click.
 
-### Screenshots
-
-\!\[Merge Conflict View\]\(images/merge-conflict-view.png\)  
-\!\[AI-Powered Merge\]\(images/ai-merge.png\)  
-\!\[Quick Commit\]\(images/commit.png\)  
-
-> Tip: Enable animations in the settings to see live previews of merges in action.
-
 ---
 
 ## Requirements
