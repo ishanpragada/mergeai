@@ -107,39 +107,43 @@ export class MergeConflictHandler {
 
                     /* SVG container for bridges */
                     .bridges-container {
-                        position: absolute;
+                        position: fixed; /* Keep fixed positioning */
                         top: 0;
                         left: 0;
                         width: 100%;
                         height: 100%;
                         pointer-events: none; /* Allow clicks to pass through */
                         z-index: 50; /* Above content but below buttons */
+                        overflow: visible; /* Allow bridges to extend beyond container */
                     }
 
                     /* Bridge path styling */
                     .bridge-path {
                         fill: none;
-                        stroke-width: 2px;
-                        opacity: 0.7;
-                        transition: opacity 0.3s, stroke-width 0.3s;
+                        stroke: none; /* Remove stroke, we'll use fill instead */
+                        opacity: 1; /* Match section opacity exactly */
+                        transition: none; /* Remove transitions for exact matching */
                     }
 
-                    .bridge-path.non-conflict {
-                        stroke: #4b9eda; /* Blue for non-conflicting changes */
+                    /* Match colors exactly with the conflict sections */
+                    .bridge-path.conflict.left {
+                        fill: rgba(46, 160, 67, 0.1);
                     }
 
-                    .bridge-path.conflict {
-                        stroke: #e58833; /* Orange for conflicts */
-                        stroke-width: 2.5px;
+                    .bridge-path.conflict.right {
+                        fill: rgba(248, 81, 73, 0.1);
                     }
 
-                    .bridge-path.resolved {
-                        stroke: #2ea043; /* Green for resolved conflicts */
+                    .bridge-path.resolved.from-local {
+                        fill: rgba(46, 160, 67, 0.1);
+                    }
+
+                    .bridge-path.resolved.from-remote {
+                        fill: rgba(248, 81, 73, 0.1);
                     }
 
                     .bridge-path.highlighted {
-                        opacity: 1;
-                        stroke-width: 3px;
+                        filter: brightness(1.2);
                     }
 
                     .bridge-path.fading {
@@ -329,21 +333,21 @@ export class MergeConflictHandler {
                         border-left: 2px solid #2ea043;
                     }
                     .conflict-local::before {
-                        background-color: var(--vscode-diffEditor-insertedTextBackground, rgba(46, 160, 67, 0.1));
+                        background-color: rgba(46, 160, 67, 0.1);
                     }
 
                     .conflict-remote {
                         border-left: 2px solid #f85149;
                     }
                     .conflict-remote::before {
-                        background-color: var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.1));
+                        background-color: rgba(248, 81, 73, 0.1);
                     }
 
                     .conflict-resolved {
                         border-left: 2px solid #0366d6;
                     }
                     .conflict-resolved::before {
-                        background-color: var(--vscode-editor-inactiveSelectionBackground, rgba(246, 248, 250, 0.1));
+                        background-color: rgba(246, 248, 250, 0.1);
                     }
                     
                     /* Resolved content from local changes */
@@ -351,7 +355,7 @@ export class MergeConflictHandler {
                         border-left: 2px solid #2ea043;
                     }
                     .conflict-resolved.from-local::before {
-                        background-color: var(--vscode-diffEditor-insertedTextBackground, rgba(46, 160, 67, 0.1));
+                        background-color: rgba(46, 160, 67, 0.1);
                     }
                     
                     /* Resolved content from remote changes */
@@ -359,7 +363,7 @@ export class MergeConflictHandler {
                         border-left: 2px solid #f85149;
                     }
                     .conflict-resolved.from-remote::before {
-                        background-color: var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.1));
+                        background-color: rgba(248, 81, 73, 0.1);
                     }
 
                     /* Editable content styling */
@@ -887,143 +891,153 @@ export class MergeConflictHandler {
                                 const svgContainer = document.getElementById('bridges-svg');
                                 svgContainer.innerHTML = ''; // Clear existing bridges
                                 
-                                // Get all conflict sections
-                                const conflictSections = document.querySelectorAll('.conflict-section');
-                                const conflictIndices = new Set();
-                                
-                                // Collect unique conflict indices
-                                conflictSections.forEach(section => {
-                                    if (section.dataset.conflictIndex) {
-                                        conflictIndices.add(section.dataset.conflictIndex);
-                                    }
-                                });
+                                // Get all conflict sections from local panel
+                                const localSections = document.querySelectorAll('#local-content .conflict-section');
                                 
                                 // Draw bridges for each conflict
-                                conflictIndices.forEach(index => {
-                                    const localSection = document.querySelector(\`#local-content .conflict-section[data-conflict-index="\${index}"]\`);
-                                    const resolvedSection = document.querySelector(\`#resolved-content .conflict-section[data-conflict-index="\${index}"]\`);
-                                    const remoteSection = document.querySelector(\`#remote-content .conflict-section[data-conflict-index="\${index}"]\`);
+                                for (let i = 0; i < localSections.length; i++) {
+                                    const localSection = localSections[i];
+                                    const index = localSection.dataset.conflictIndex;
                                     
-                                    if (localSection && resolvedSection && remoteSection) {
-                                        // Get bounding rectangles
-                                        const localRect = localSection.getBoundingClientRect();
-                                        const resolvedRect = resolvedSection.getBoundingClientRect();
-                                        const remoteRect = remoteSection.getBoundingClientRect();
+                                    // Find corresponding sections in other panels
+                                    const resolvedSection = document.getElementById('resolved-content')
+                                        .querySelector('.conflict-section[data-conflict-index="' + index + '"]');
+                                    const remoteSection = document.getElementById('remote-content')
+                                        .querySelector('.conflict-section[data-conflict-index="' + index + '"]');
+                                    
+                                    if (!resolvedSection || !remoteSection) continue;
+                                    
+                                    // Get bounding rectangles relative to the viewport (not the document)
+                                    const localRect = localSection.getBoundingClientRect();
+                                    const resolvedRect = resolvedSection.getBoundingClientRect();
+                                    const remoteRect = remoteSection.getBoundingClientRect();
+                                    
+                                    // Get horizontal scroll positions of each panel
+                                    const localScroll = document.getElementById('local-content').scrollLeft;
+                                    const resolvedScroll = document.getElementById('resolved-content').scrollLeft;
+                                    const remoteScroll = document.getElementById('remote-content').scrollLeft;
+                                    
+                                    // Create left bridge (local to resolved) using path for curved edges
+                                    const leftBridge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                    leftBridge.classList.add('bridge-path', 'conflict', 'left');
+                                    leftBridge.setAttribute('data-conflict-index', index);
+                                    leftBridge.setAttribute('data-side', 'left');
+                                    
+                                    // Create right bridge (resolved to remote) using path for curved edges
+                                    const rightBridge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                    rightBridge.classList.add('bridge-path', 'conflict', 'right');
+                                    rightBridge.setAttribute('data-conflict-index', index);
+                                    rightBridge.setAttribute('data-side', 'right');
+                                    
+                                    // Calculate points for the bridges - use viewport coordinates directly
+                                    // Adjust for horizontal scroll position
+                                    const leftTop = localRect.top;
+                                    const leftBottom = localRect.bottom;
+                                    const resolvedTop = resolvedRect.top;
+                                    const resolvedBottom = resolvedRect.bottom;
+                                    const remoteTop = remoteRect.top;
+                                    const remoteBottom = remoteRect.bottom;
+                                    
+                                    // Adjust right edge positions based on horizontal scroll
+                                    const localRight = localRect.right + localScroll;
+                                    const resolvedLeft = resolvedRect.left + resolvedScroll;
+                                    const resolvedRight = resolvedRect.right + resolvedScroll;
+                                    const remoteLeft = remoteRect.left + remoteScroll;
+                                    
+                                    // Calculate control points for bezier curves (25% of the distance between panels)
+                                    const leftControlX = localRight + (resolvedLeft - localRight) * 0.25;
+                                    const rightControlX = resolvedRight + (remoteLeft - resolvedRight) * 0.25;
+                                    
+                                    // Set path data with bezier curves for smooth edges
+                                    // Adjust the path to perfectly align with the section edges
+                                    // M = move to, C = cubic bezier curve
+                                    leftBridge.setAttribute('d', 
+                                        'M ' + localRight + ' ' + leftTop + ' ' +
+                                        'C ' + leftControlX + ' ' + leftTop + ', ' + (resolvedLeft - 0) + ' ' + resolvedTop + ', ' + resolvedLeft + ' ' + resolvedTop + ' ' +
+                                        'L ' + resolvedLeft + ' ' + resolvedBottom + ' ' +
+                                        'C ' + (resolvedLeft - 0) + ' ' + resolvedBottom + ', ' + leftControlX + ' ' + leftBottom + ', ' + localRight + ' ' + leftBottom + ' ' +
+                                        'Z'
+                                    );
+                                    
+                                    rightBridge.setAttribute('d', 
+                                        'M ' + resolvedRight + ' ' + resolvedTop + ' ' +
+                                        'C ' + (resolvedRight + 0) + ' ' + resolvedTop + ', ' + rightControlX + ' ' + remoteTop + ', ' + remoteLeft + ' ' + remoteTop + ' ' +
+                                        'L ' + remoteLeft + ' ' + remoteBottom + ' ' +
+                                        'C ' + rightControlX + ' ' + remoteBottom + ', ' + (resolvedRight + 0) + ' ' + resolvedBottom + ', ' + resolvedRight + ' ' + resolvedBottom + ' ' +
+                                        'Z'
+                                    );
+                                    
+                                    // Check if this conflict is resolved
+                                    const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
+                                    const isResolved = Array.from(resolvedLines).some(function(line) {
+                                        return line.classList.contains('from-local') || line.classList.contains('from-remote');
+                                    });
+                                    
+                                    if (isResolved) {
+                                        // Check which side was accepted
+                                        const fromLocal = Array.from(resolvedLines).some(function(line) {
+                                            return line.classList.contains('from-local');
+                                        });
                                         
-                                        // Get scroll position
-                                        const scrollTop = document.getElementById('main-scroll').scrollTop;
-                                        
-                                        // Adjust for scroll position
-                                        const localTop = localRect.top + scrollTop;
-                                        const localBottom = localRect.bottom + scrollTop;
-                                        const resolvedTop = resolvedRect.top + scrollTop;
-                                        const resolvedBottom = resolvedRect.bottom + scrollTop;
-                                        const remoteTop = remoteRect.top + scrollTop;
-                                        const remoteBottom = remoteRect.bottom + scrollTop;
-                                        
-                                        // Create paths for bridges
-                                        // Left bridge (local to resolved)
-                                        const leftPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                                        leftPath.classList.add('bridge-path', 'conflict');
-                                        leftPath.dataset.conflictIndex = index;
-                                        leftPath.dataset.side = 'left';
-                                        
-                                        // Right bridge (resolved to remote)
-                                        const rightPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                                        rightPath.classList.add('bridge-path', 'conflict');
-                                        rightPath.dataset.conflictIndex = index;
-                                        rightPath.dataset.side = 'right';
-                                        
-                                        // Calculate control points for smooth curves
-                                        const leftControlX = (localRect.right + resolvedRect.left) / 2;
-                                        const rightControlX = (resolvedRect.right + remoteRect.left) / 2;
-                                        
-                                        // Create path data for smooth curves
-                                        const leftPathData = \`
-                                            M \${localRect.right} \${localTop + 10}
-                                            C \${leftControlX} \${localTop + 10}, \${leftControlX} \${resolvedTop + 10}, \${resolvedRect.left} \${resolvedTop + 10}
-                                            L \${resolvedRect.left} \${resolvedBottom - 10}
-                                            C \${leftControlX} \${resolvedBottom - 10}, \${leftControlX} \${localBottom - 10}, \${localRect.right} \${localBottom - 10}
-                                            Z
-                                        \`;
-                                        
-                                        const rightPathData = \`
-                                            M \${resolvedRect.right} \${resolvedTop + 10}
-                                            C \${rightControlX} \${resolvedTop + 10}, \${rightControlX} \${remoteTop + 10}, \${remoteRect.left} \${remoteTop + 10}
-                                            L \${remoteRect.left} \${remoteBottom - 10}
-                                            C \${rightControlX} \${remoteBottom - 10}, \${rightControlX} \${resolvedBottom - 10}, \${resolvedRect.right} \${resolvedBottom - 10}
-                                            Z
-                                        \`;
-                                        
-                                        leftPath.setAttribute('d', leftPathData);
-                                        rightPath.setAttribute('d', rightPathData);
-                                        
-                                        // Check if this conflict is resolved
-                                        const resolvedLines = resolvedSection.querySelectorAll('.conflict-resolved');
-                                        const isResolved = Array.from(resolvedLines).some(line => 
-                                            line.classList.contains('from-local') || line.classList.contains('from-remote')
-                                        );
-                                        
-                                        if (isResolved) {
-                                            // Check which side was accepted
-                                            const fromLocal = Array.from(resolvedLines).some(line => 
-                                                line.classList.contains('from-local')
-                                            );
-                                            
-                                            if (fromLocal) {
-                                                leftPath.classList.remove('conflict');
-                                                leftPath.classList.add('resolved');
-                                                rightPath.classList.add('fading');
-                                            } else {
-                                                rightPath.classList.remove('conflict');
-                                                rightPath.classList.add('resolved');
-                                                leftPath.classList.add('fading');
-                                            }
+                                        if (fromLocal) {
+                                            leftBridge.classList.remove('conflict');
+                                            leftBridge.classList.add('resolved', 'from-local');
+                                            rightBridge.classList.add('fading');
+                                        } else {
+                                            rightBridge.classList.remove('conflict');
+                                            rightBridge.classList.add('resolved', 'from-remote');
+                                            leftBridge.classList.add('fading');
                                         }
-                                        
-                                        // Add paths to SVG
-                                        svgContainer.appendChild(leftPath);
-                                        svgContainer.appendChild(rightPath);
                                     }
-                                });
+                                    
+                                    // Add bridges to SVG
+                                    svgContainer.appendChild(leftBridge);
+                                    svgContainer.appendChild(rightBridge);
+                                }
                             }
                             
                             function updateBridges(index, source) {
                                 // Update bridge visualization when a conflict is resolved
-                                const leftBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="left"]\`);
-                                const rightBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="right"]\`);
+                                const leftBridge = document.querySelector('.bridge-path[data-conflict-index="' + index + '"][data-side="left"]');
+                                const rightBridge = document.querySelector('.bridge-path[data-conflict-index="' + index + '"][data-side="right"]');
                                 
                                 if (leftBridge && rightBridge) {
                                     if (source === 'local') {
                                         // Local was accepted
                                         leftBridge.classList.remove('conflict');
-                                        leftBridge.classList.add('resolved');
+                                        leftBridge.classList.add('resolved', 'from-local');
                                         rightBridge.classList.add('fading');
                                     } else {
                                         // Remote was accepted
                                         rightBridge.classList.remove('conflict');
-                                        rightBridge.classList.add('resolved');
+                                        rightBridge.classList.add('resolved', 'from-remote');
                                         leftBridge.classList.add('fading');
                                     }
+                                } else {
+                                    // If bridges weren't found, redraw them
+                                    setTimeout(drawBridges, 50);
                                 }
                             }
                             
                             function resetBridges(index) {
                                 // Reset bridges to conflict state when a resolved section is cleared
-                                const leftBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="left"]\`);
-                                const rightBridge = document.querySelector(\`.bridge-path[data-conflict-index="\${index}"][data-side="right"]\`);
+                                const leftBridge = document.querySelector('.bridge-path[data-conflict-index="' + index + '"][data-side="left"]');
+                                const rightBridge = document.querySelector('.bridge-path[data-conflict-index="' + index + '"][data-side="right"]');
                                 
                                 if (leftBridge && rightBridge) {
-                                    leftBridge.classList.remove('resolved', 'fading');
-                                    rightBridge.classList.remove('resolved', 'fading');
+                                    leftBridge.classList.remove('resolved', 'from-local', 'fading');
+                                    rightBridge.classList.remove('resolved', 'from-remote', 'fading');
                                     leftBridge.classList.add('conflict');
                                     rightBridge.classList.add('conflict');
+                                } else {
+                                    // If bridges weren't found, redraw them
+                                    setTimeout(drawBridges, 50);
                                 }
                             }
                             
                             function highlightBridges(index) {
                                 // Highlight bridges on hover
-                                const bridges = document.querySelectorAll(\`.bridge-path[data-conflict-index="\${index}"]\`);
+                                const bridges = document.querySelectorAll('.bridge-path[data-conflict-index="' + index + '"]');
                                 bridges.forEach(bridge => {
                                     if (!bridge.classList.contains('fading')) {
                                         bridge.classList.add('highlighted');
@@ -1067,12 +1081,20 @@ export class MergeConflictHandler {
                                         panel.scrollTop = scrollTop;
                                     });
                                     
-                                    // Redraw bridges when scrolling
+                                    // Redraw bridges on scroll to ensure they stay in the correct position
                                     requestAnimationFrame(drawBridges);
                                 }
                                 
                                 // Listen for scroll events on the main scroll container
                                 mainScroll.addEventListener('scroll', syncPanelsToScroll, { passive: true });
+                                
+                                // Listen for horizontal scroll events on each panel
+                                panels.forEach(panel => {
+                                    panel.addEventListener('scroll', () => {
+                                        // Redraw bridges when any panel is horizontally scrolled
+                                        requestAnimationFrame(drawBridges);
+                                    }, { passive: true });
+                                });
                                 
                                 // Update the scroll height when content changes
                                 const observer = new MutationObserver(() => {
@@ -1083,7 +1105,7 @@ export class MergeConflictHandler {
                                         window.buttonsPositioned = true;
                                     }
                                     // Redraw bridges when content changes
-                                    requestAnimationFrame(drawBridges);
+                                    setTimeout(drawBridges, 100);
                                 });
                                 
                                 panels.forEach(panel => {
@@ -1093,6 +1115,7 @@ export class MergeConflictHandler {
                                 // Position buttons correctly based on conflict sections
                                 function positionButtons() {
                                     // Clear existing buttons
+                                    document.querySelectorAll('.arrow-button').forEach(btn => btn.remove());
                                     leftButtonsColumn.innerHTML = '';
                                     rightButtonsColumn.innerHTML = '';
                                     
@@ -1128,6 +1151,7 @@ export class MergeConflictHandler {
                                         leftArrow.style.top = (rect.top + rect.height/2) + 'px';
                                         leftArrow.style.transform = 'translateY(-50%)';
                                         
+                                        // Append to document body
                                         document.body.appendChild(leftArrow);
                                     });
                                     
@@ -1154,6 +1178,7 @@ export class MergeConflictHandler {
                                         rightArrow.style.top = (rect.top + rect.height/2) + 'px';
                                         rightArrow.style.transform = 'translateY(-50%)';
                                         
+                                        // Append to document body
                                         document.body.appendChild(rightArrow);
                                     });
                                 }
@@ -1163,6 +1188,8 @@ export class MergeConflictHandler {
                                     updateScrollHeight();
                                     positionButtons();
                                     window.buttonsPositioned = true;
+                                    // Draw bridges after everything is set up
+                                    drawBridges();
                                 }, 100);
                                 
                                 // Update on window resize
@@ -1173,14 +1200,14 @@ export class MergeConflictHandler {
                                     window.buttonsPositioned = false;
                                     positionButtons();
                                     // Redraw bridges on resize
-                                    requestAnimationFrame(drawBridges);
+                                    setTimeout(drawBridges, 100);
                                 });
                                 
                                 // Update button positions on scroll
                                 mainScroll.addEventListener('scroll', () => {
                                     // Update fixed button positions based on their sections
-                                    localSections = document.querySelectorAll('#local-content .conflict-section');
-                                    remoteSections = document.querySelectorAll('#remote-content .conflict-section');
+                                    const localSections = document.querySelectorAll('#local-content .conflict-section');
+                                    const remoteSections = document.querySelectorAll('#remote-content .conflict-section');
                                     
                                     localSections.forEach(section => {
                                         const index = section.dataset.conflictIndex;
@@ -1211,7 +1238,13 @@ export class MergeConflictHandler {
                                     renderContent();
                                     
                                     // Set up scroll sync after content is rendered
-                                    setTimeout(setupScrollSync, 100);
+                                    setTimeout(() => {
+                                        setupScrollSync();
+                                        // Ensure bridges are drawn after everything is rendered
+                                        setTimeout(drawBridges, 300);
+                                        // Draw bridges again after a longer delay to ensure all elements are properly positioned
+                                        setTimeout(drawBridges, 1000);
+                                    }, 100);
                                 } else if (message.command === 'refreshView') {
                                     // Re-render the view when the panel becomes visible again
                                     if (conflicts.length > 0 && fileContent) {
@@ -1225,8 +1258,10 @@ export class MergeConflictHandler {
                                         // Re-setup scroll sync
                                         setTimeout(() => {
                                             setupScrollSync();
-                                            // Make sure bridges are drawn
-                                            drawBridges();
+                                            // Make sure bridges are drawn with a longer delay
+                                            setTimeout(drawBridges, 300);
+                                            // Draw bridges again after a longer delay
+                                            setTimeout(drawBridges, 1000);
                                         }, 100);
                                     }
                                 }
